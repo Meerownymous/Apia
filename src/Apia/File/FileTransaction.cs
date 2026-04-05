@@ -42,25 +42,28 @@ internal sealed class BufferingMemory : IMemory
         this.operations = operations;
     }
 
-    public IMutableCatalog<TResult> Catalog<TResult>()
-        => new BufferingMutableCatalog<TResult>(source.GetFileMutableCatalog<TResult>(), operations);
+    public IEntities<TResult> Entities<TResult>()
+        => new BufferingEntities<TResult>(source.GetFileEntities<TResult>(), operations);
 
-    public IMutable<TResult> Mutable<TResult>()
-        => new BufferingMutable<TResult>(source.GetFileMutable<TResult>(), operations);
+    public IVault<TResult> Vault<TResult>()
+        => new BufferingVault<TResult>(source.GetFileVault<TResult>(), operations);
 
-    public IProjection<TResult, TQuery> Synopsis<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViews<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
         => source.GetSource<TResult, TQuery>().Build(source.Directory);
+
+    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+        => throw new NotImplementedException();
 
     public ITransaction Begin()
         => throw new InvalidOperationException("Cannot begin a nested transaction.");
 }
 
-internal sealed class BufferingMutableCatalog<TResult> : IMutableCatalog<TResult>
+internal sealed class BufferingEntities<TResult> : IEntities<TResult>
 {
-    private readonly FileMutableCatalog<TResult> inner;
+    private readonly FileEntities<TResult> inner;
     private readonly List<Func<Task>> operations;
 
-    internal BufferingMutableCatalog(FileMutableCatalog<TResult> inner, List<Func<Task>> operations)
+    internal BufferingEntities(FileEntities<TResult> inner, List<Func<Task>> operations)
     {
         this.inner      = inner;
         this.operations = operations;
@@ -85,12 +88,12 @@ internal sealed class BufferingMutableCatalog<TResult> : IMutableCatalog<TResult
     public IAsyncEnumerable<Guid> Ids() => inner.Ids();
 }
 
-internal sealed class BufferingMutable<TResult> : IMutable<TResult>
+internal sealed class BufferingVault<TResult> : IVault<TResult>
 {
-    private readonly FileMutable<TResult> inner;
+    private readonly FileVault<TResult> inner;
     private readonly List<Func<Task>> operations;
 
-    internal BufferingMutable(FileMutable<TResult> inner, List<Func<Task>> operations)
+    internal BufferingVault(FileVault<TResult> inner, List<Func<Task>> operations)
     {
         this.inner      = inner;
         this.operations = operations;

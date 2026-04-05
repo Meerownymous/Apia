@@ -34,19 +34,22 @@ internal sealed class TransactionalRamMemory : IMemory
     private readonly RamMemory source;
     private readonly List<Func<Task>> operations = new();
     private static readonly object DeletedMarker = new();
-    private readonly ConcurrentDictionary<(Type, Guid), object> catalogBuffer = new();
-    private readonly ConcurrentDictionary<Type, object> mutableBuffer = new();
+    private readonly ConcurrentDictionary<(Type, Guid), object> entitiesBuffer = new();
+    private readonly ConcurrentDictionary<Type, object> vaultBuffer = new();
 
     internal TransactionalRamMemory(RamMemory source) => this.source = source;
 
-    public IMutableCatalog<TResult> Catalog<TResult>()
-        => new BufferedRamCatalog<TResult>(source.RawCatalog<TResult>(), catalogBuffer, operations, DeletedMarker);
+    public IEntities<TResult> Entities<TResult>()
+        => new BufferedRamEntities<TResult>(source.RawEntities<TResult>(), entitiesBuffer, operations, DeletedMarker);
 
-    public IMutable<TResult> Mutable<TResult>()
-        => new BufferedRamMutable<TResult>(source.RawMutable<TResult>(), mutableBuffer, operations);
+    public IVault<TResult> Vault<TResult>()
+        => new BufferedRamVault<TResult>(source.RawVault<TResult>(), vaultBuffer, operations);
 
-    public IProjection<TResult, TQuery> Synopsis<TResult, TQuery>() where TQuery : Query<TResult>
-        => source.Synopsis<TResult, TQuery>();
+    public IViews<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+        => source.Views<TResult, TQuery>();
+
+    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+        => throw new NotImplementedException();
 
     public ITransaction Begin()
         => throw new InvalidOperationException("Cannot begin a nested transaction.");
@@ -60,15 +63,15 @@ internal sealed class TransactionalRamMemory : IMemory
     internal void Discard() => operations.Clear();
 }
 
-internal sealed class BufferedRamCatalog<TResult> : IMutableCatalog<TResult>
+internal sealed class BufferedRamEntities<TResult> : IEntities<TResult>
 {
-    private readonly RamMutableCatalog<TResult> inner;
+    private readonly RamEntities<TResult> inner;
     private readonly ConcurrentDictionary<(Type, Guid), object> buffer;
     private readonly List<Func<Task>> operations;
     private readonly object deletedMarker;
 
-    internal BufferedRamCatalog(
-        RamMutableCatalog<TResult> inner,
+    internal BufferedRamEntities(
+        RamEntities<TResult> inner,
         ConcurrentDictionary<(Type, Guid), object> buffer,
         List<Func<Task>> operations,
         object deletedMarker)

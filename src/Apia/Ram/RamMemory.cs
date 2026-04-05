@@ -5,54 +5,57 @@ namespace Apia.Ram;
 
 public sealed class RamMemory : IMemory
 {
-    private readonly ConcurrentDictionary<Type, object> catalogs;
-    private readonly ConcurrentDictionary<Type, object> mutables;
+    private readonly ConcurrentDictionary<Type, object> entities;
+    private readonly ConcurrentDictionary<Type, object> vaults;
     private readonly ConcurrentDictionary<(Type, Type), object> sources;
 
     internal RamMemory(
-        ConcurrentDictionary<Type, object> catalogs,
-        ConcurrentDictionary<Type, object> mutables,
+        ConcurrentDictionary<Type, object> entities,
+        ConcurrentDictionary<Type, object> vaults,
         ConcurrentDictionary<(Type, Type), object> sources)
     {
-        this.catalogs = catalogs;
-        this.mutables = mutables;
+        this.entities = entities;
+        this.vaults   = vaults;
         this.sources  = sources;
     }
 
-    public IMutableCatalog<TResult> Catalog<TResult>()
+    public IEntities<TResult> Entities<TResult>()
     {
-        if (!catalogs.TryGetValue(typeof(TResult), out var catalog))
-            throw new InvalidOperationException($"No IMutableCatalog<{typeof(TResult).Name}> registered.");
-        return (IMutableCatalog<TResult>)catalog;
+        if (!entities.TryGetValue(typeof(TResult), out var entry))
+            throw new InvalidOperationException($"No IEntities<{typeof(TResult).Name}> registered.");
+        return (IEntities<TResult>)entry;
     }
 
-    public IMutable<TResult> Mutable<TResult>()
+    public IVault<TResult> Vault<TResult>()
     {
-        if (!mutables.TryGetValue(typeof(TResult), out var mutable))
-            throw new InvalidOperationException($"No IMutable<{typeof(TResult).Name}> registered.");
-        return (IMutable<TResult>)mutable;
+        if (!vaults.TryGetValue(typeof(TResult), out var vault))
+            throw new InvalidOperationException($"No IVault<{typeof(TResult).Name}> registered.");
+        return (IVault<TResult>)vault;
     }
 
-    public IProjection<TResult, TQuery> Synopsis<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViews<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
         return ((ISynopsis<TResult, TQuery, IMemory>)source).Build(this);
     }
 
+    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+        => throw new NotImplementedException();
+
     public ITransaction Begin() => new RamTransaction(this);
 
-    internal RamMutableCatalog<TResult> RawCatalog<TResult>()
+    internal RamEntities<TResult> RawEntities<TResult>()
     {
-        if (!catalogs.TryGetValue(typeof(TResult), out var catalog) || catalog is not RamMutableCatalog<TResult> raw)
-            throw new InvalidOperationException($"No RamMutableCatalog<{typeof(TResult).Name}> registered.");
+        if (!entities.TryGetValue(typeof(TResult), out var entry) || entry is not RamEntities<TResult> raw)
+            throw new InvalidOperationException($"No RamEntities<{typeof(TResult).Name}> registered.");
         return raw;
     }
 
-    internal RamMutable<TResult> RawMutable<TResult>()
+    internal RamVault<TResult> RawVault<TResult>()
     {
-        if (!mutables.TryGetValue(typeof(TResult), out var mutable) || mutable is not RamMutable<TResult> raw)
-            throw new InvalidOperationException($"No RamMutable<{typeof(TResult).Name}> registered.");
+        if (!vaults.TryGetValue(typeof(TResult), out var vault) || vault is not RamVault<TResult> raw)
+            throw new InvalidOperationException($"No RamVault<{typeof(TResult).Name}> registered.");
         return raw;
     }
 }

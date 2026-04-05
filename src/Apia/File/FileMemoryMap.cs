@@ -9,17 +9,17 @@ namespace Apia.File;
 /// </summary>
 public sealed class FileMemoryMap(string directory) : IMemoryMap
 {
-    private readonly ConcurrentDictionary<Type, object> catalogs = new();
-    private readonly ConcurrentDictionary<Type, object> mutables = new();
+    private readonly ConcurrentDictionary<Type, object> entities = new();
+    private readonly ConcurrentDictionary<Type, object> vaults   = new();
     private readonly ConcurrentDictionary<(Type, Type), object> sources = new();
 
     /// <inheritdoc/>
-    public void Register<TResult>(IMutableCatalog<TResult> catalog)
-        => catalogs[typeof(TResult)] = catalog;
+    public void Register<TResult>(IEntities<TResult> e)
+        => entities[typeof(TResult)] = e;
 
     /// <inheritdoc/>
-    public void Register<TResult>(IMutable<TResult> mutable)
-        => mutables[typeof(TResult)] = mutable;
+    public void Register<TResult>(IVault<TResult> vault)
+        => vaults[typeof(TResult)] = vault;
 
     /// <summary>Register a synopsis source. TContext is DirectoryInfo for File.</summary>
     public void Register<TResult, TQuery>(ISynopsis<TResult, TQuery, DirectoryInfo> source)
@@ -27,5 +27,5 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
         => sources[(typeof(TResult), typeof(TQuery))] = source;
 
     /// <inheritdoc/>
-    public IMemory Build() => new FileMemory(directory, catalogs, mutables, sources);
+    public IMemory Build() => new FileMemory(directory, entities, vaults, sources);
 }

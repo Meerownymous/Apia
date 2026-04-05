@@ -14,8 +14,8 @@ namespace Apia.Postgres;
 public sealed class PostgresMemoryMap : IMemoryMap
 {
     private readonly IDocumentStore store;
-    private readonly ConcurrentDictionary<Type, object> catalogs = new();
-    private readonly ConcurrentDictionary<Type, object> mutables = new();
+    private readonly ConcurrentDictionary<Type, object> entities = new();
+    private readonly ConcurrentDictionary<Type, object> vaults   = new();
     private readonly ConcurrentDictionary<(Type, Type), object> sources = new();
 
     public PostgresMemoryMap(string connectionString)
@@ -38,13 +38,13 @@ public sealed class PostgresMemoryMap : IMemoryMap
         });
     }
 
-    /// <summary>Register a PostgresMutableCatalog — e.g. new PostgresMutableCatalog&lt;PostRecord&gt;(p => p.PostId).</summary>
-    public void Register<TResult>(IMutableCatalog<TResult> catalog)
-        => catalogs[typeof(TResult)] = catalog;
+    /// <summary>Register a PostgresEntities — e.g. new PostgresEntities&lt;PostRecord&gt;(p => p.PostId).</summary>
+    public void Register<TResult>(IEntities<TResult> e)
+        => entities[typeof(TResult)] = e;
 
-    /// <summary>Register a PostgresMutable for a singleton-style record.</summary>
-    public void Register<TResult>(IMutable<TResult> mutable)
-        => mutables[typeof(TResult)] = mutable;
+    /// <summary>Register a PostgresVault for a singleton-style record.</summary>
+    public void Register<TResult>(IVault<TResult> vault)
+        => vaults[typeof(TResult)] = vault;
 
     /// <summary>Register a synopsis source. TContext is (IMemory, IDocumentSession) for Postgres.</summary>
     public void Register<TResult, TQuery>(
@@ -53,5 +53,5 @@ public sealed class PostgresMemoryMap : IMemoryMap
         => sources[(typeof(TResult), typeof(TQuery))] = source;
 
     /// <inheritdoc/>
-    public IMemory Build() => new PostgresMemory(store, catalogs, mutables, sources);
+    public IMemory Build() => new PostgresMemory(store, entities, vaults, sources);
 }

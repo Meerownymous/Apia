@@ -3,13 +3,16 @@ namespace Apia;
 public interface IMemory
 {
     /// <summary>Many records, addressable by Guid.</summary>
-    IMutableCatalog<TResult> Catalog<TResult>();
+    IEntities<TResult> Entities<TResult>();
 
     /// <summary>A single record with no Guid — settings, config, state.</summary>
-    IMutable<TResult> Mutable<TResult>();
+    IVault<TResult> Vault<TResult>();
 
-    /// <summary>Query a projection. Register the source via IMemoryMap.</summary>
-    IProjection<TResult, TQuery> Synopsis<TResult, TQuery>() where TQuery : Query<TResult>;
+    /// <summary>Query a stream projection. Register the source via IMemoryMap.</summary>
+    IViews<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>;
+
+    /// <summary>Query a single-result projection. Register the source via IMemoryMap.</summary>
+    IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>;
 
     /// <summary>Begin a transaction. Commit() to persist, or dispose to rollback.</summary>
     ITransaction Begin();

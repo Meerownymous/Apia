@@ -1,6 +1,6 @@
 namespace Apia.Tests.Record;
 
-public sealed record UserFeedProjection(
+public sealed record UserPostSummaryProjection(
     Guid PostId,
     string AuthorName,
     string Content,

@@ -4,13 +4,13 @@ using Tonga.Enumerable;
 
 namespace Apia.Tests.Examples;
 
-public sealed class UserFeedSynopsis : RamSynopsis<UserFeedProjection, UserFeedQuery>
+public sealed class UserFeedSynopsis() : RamSynopsis<UserPostSummaryProjection, UserFeedQuery>(Query)
 {
-    protected override async IAsyncEnumerable<UserFeedProjection> Query(IMemory memory, UserFeedQuery query)
+    private static async IAsyncEnumerable<UserPostSummaryProjection> Query(IMemory memory, UserFeedQuery query)
     {
-        var posts    = memory.Catalog<PostRecord>();
-        var comments = memory.Catalog<CommentRecord>();
-        var users    = memory.Catalog<UserRecord>();
+        var posts    = memory.Entities<PostRecord>();
+        var comments = memory.Entities<CommentRecord>();
+        var users    = memory.Entities<UserRecord>();
 
         var userPosts = new List<PostRecord>();
         await foreach (var post in posts.All())
@@ -35,7 +35,7 @@ public sealed class UserFeedSynopsis : RamSynopsis<UserFeedProjection, UserFeedQ
         foreach (var post in feed)
         {
             commentCounts.TryGetValue(post.PostId, out var commentCount);
-            yield return new UserFeedProjection(
+            yield return new UserPostSummaryProjection(
                 PostId:       post.PostId,
                 AuthorName:   author.Username,
                 Content:      post.Content,
