@@ -1,3 +1,5 @@
+using OneOf;
+
 namespace Apia;
 
 public interface IEntities<TRecord>
@@ -8,11 +10,11 @@ public interface IEntities<TRecord>
     /// <summary>Streams all stored ids.</summary>
     IAsyncEnumerable<TRecord> All();
 
-    /// <summary>Load a record by id. Throws if not found.</summary>
-    Task<TRecord> Fetch(Guid id);
+    /// <summary>Load a record by id. Returns NotFound if missing.</summary>
+    Task<OneOf<TRecord, NotFound>> Load(Guid id);
 
-    /// <summary>Save a record. Insert if new, optimistic update if known.</summary>
-    Task Save(TRecord record);
+    /// <summary>Save a record. Insert if new, optimistic update if known. Returns Conflict if modified since last Load.</summary>
+    Task<OneOf<TRecord, Conflict<TRecord>>> Save(TRecord record);
 
     /// <summary>Delete a record by id. No-op if not found.</summary>
     Task Delete(Guid id);

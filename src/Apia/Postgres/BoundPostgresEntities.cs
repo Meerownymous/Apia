@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Marten;
+using OneOf;
 
 namespace Apia.Postgres;
 
@@ -24,25 +25,30 @@ public sealed class BoundPostgresEntities<TRecord> : IEntities<TRecord> where TR
             yield return record;
     }
 
-    public async Task<TRecord> Fetch(Guid id)
+    public async Task<OneOf<TRecord, NotFound>> Load(Guid id)
     {
         var record = await session.LoadAsync<TRecord>(id);
         if (record is null)
-            throw new KeyNotFoundException($"No {typeof(TRecord).Name} found with id {id}.");
+            return new NotFound();
         var version = await LoadVersion(id);
         loadedVersions[id] = version;
         return record;
     }
 
-    public async Task Save(TRecord record)
+    public async Task<OneOf<TRecord, Conflict<TRecord>>> Save(TRecord record)
     {
         var id              = idOf(record);
         var currentVersion  = await LoadVersion(id);
         var expectedVersion = loadedVersions.GetValueOrDefault(id, 0u);
         if (currentVersion > 0 && currentVersion != expectedVersion)
-            throw new ConcurrentModificationException(typeof(TRecord), id);
+        {
+            var current = await session.LoadAsync<TRecord>(id);
+            var conflict = new Conflict<TRecord>(current!, record);
+            return OneOf<TRecord, Conflict<TRecord>>.FromT1(conflict);
+        }
         session.Store(record);
         session.Store(new ApiaVersion(VersionId(id), typeof(TRecord).Name, id, currentVersion + 1));
+        return OneOf<TRecord, Conflict<TRecord>>.FromT0(record);
     }
 
     public Task Delete(Guid id)

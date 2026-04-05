@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Apia;
 using Marten;
+using OneOf;
 
 namespace Apia.Postgres;
 
@@ -20,10 +21,10 @@ public sealed class PostgresEntities<TResult>(Func<TResult, Guid> idOf) : IEntit
     public IAsyncEnumerable<TResult> All()
         => throw new InvalidOperationException("Use IMemory.Entities<T>() to access this store.");
 
-    public Task<TResult> Fetch(Guid id)
+    public Task<OneOf<TResult, NotFound>> Load(Guid id)
         => throw new InvalidOperationException("Use IMemory.Entities<T>() to access this store.");
 
-    public Task Save(TResult record)
+    public Task<OneOf<TResult, Conflict<TResult>>> Save(TResult record)
         => throw new InvalidOperationException("Use IMemory.Entities<T>() to access this store.");
 
     public Task Delete(Guid id)

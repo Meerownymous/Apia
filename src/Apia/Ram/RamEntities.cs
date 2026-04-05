@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using OneOf;
 using Apia;
 
 namespace Apia.Ram;
@@ -8,47 +9,54 @@ namespace Apia.Ram;
 /// idOf: extracts the Guid key from a record — e.g. p => p.PostId.
 /// label: optional debug label, no effect on storage.
 /// </summary>
-public sealed class RamEntities<TResult> : IEntities<TResult>
+public sealed class RamEntities<TResult>(Func<TResult, Guid> idOf, Func<TResult, string> label) : IEntities<TResult>
 {
     private readonly ConcurrentDictionary<Guid, Versioned<TResult>> store = new();
     private readonly ConcurrentDictionary<Guid, uint> loadedVersions = new();
-    private readonly Func<TResult, Guid> idOf;
-    private readonly Func<TResult, string> label;
-
-    public RamEntities(Func<TResult, Guid> idOf, Func<TResult, string> label)
-    {
-        this.idOf  = idOf;
-        this.label = label;
-    }
 
     public RamEntities(Func<TResult, Guid> idOf)
         : this(idOf, r => idOf(r).ToString())
-    {
-    }
+    { }
 
-    public Task<TResult> Fetch(Guid id)
+    public Task<OneOf<TResult, NotFound>> Load(Guid id)
     {
         if (!store.TryGetValue(id, out var versioned))
-            throw new KeyNotFoundException($"No {typeof(TResult).Name} found with id {id}.");
-
+            return Task.FromResult(OneOf<TResult, NotFound>.FromT1(new NotFound()));
         loadedVersions[id] = versioned.Version;
-        return Task.FromResult(versioned.Record);
+        return Task.FromResult(OneOf<TResult, NotFound>.FromT0(versioned.Record));
     }
 
-    public Task Save(TResult record)
+    public Task<OneOf<TResult, Conflict<TResult>>> Save(TResult record)
     {
         var id = idOf(record);
-        store.AddOrUpdate(
-            key:                id,
-            addValueFactory:    _ => new Versioned<TResult>(record, 1),
-            updateValueFactory: (_, existing) =>
+        if (store.TryGetValue(id, out var existing))
+        {
+            var expected = loadedVersions.GetValueOrDefault(id, 0u);
+            if (existing.Version != expected)
             {
-                var expected = loadedVersions.GetValueOrDefault(id, 0u);
-                if (existing.Version != expected)
-                    throw new ConcurrentModificationException(typeof(TResult), id);
-                return new Versioned<TResult>(record, existing.Version + 1);
-            });
-        return Task.CompletedTask;
+                var conflict = new Conflict<TResult>(existing.Record, record);
+                return Task.FromResult(OneOf<TResult, Conflict<TResult>>.FromT1(conflict));
+            }
+            var next = new Versioned<TResult>(record, existing.Version + 1);
+            if (!store.TryUpdate(id, next, existing))
+            {
+                // Another thread wrote between our TryGetValue and TryUpdate
+                store.TryGetValue(id, out var current);
+                var conflict = new Conflict<TResult>(current!.Record, record);
+                return Task.FromResult(OneOf<TResult, Conflict<TResult>>.FromT1(conflict));
+            }
+        }
+        else
+        {
+            if (!store.TryAdd(id, new Versioned<TResult>(record, 1)))
+            {
+                // Another thread inserted between our TryGetValue and TryAdd
+                store.TryGetValue(id, out var current);
+                var conflict = new Conflict<TResult>(current!.Record, record);
+                return Task.FromResult(OneOf<TResult, Conflict<TResult>>.FromT1(conflict));
+            }
+        }
+        return Task.FromResult(OneOf<TResult, Conflict<TResult>>.FromT0(record));
     }
 
     public Task Delete(Guid id)
@@ -62,7 +70,11 @@ public sealed class RamEntities<TResult> : IEntities<TResult>
 
     public async IAsyncEnumerable<TResult> All()
     {
-        foreach (var id in store.Keys)
-            yield return await Task.FromResult(store[id].Record);
+        foreach (var kv in store)
+            yield return await Task.FromResult(kv.Value.Record);
     }
+
+    internal string Label(TResult record) => label(record);
+
+    internal RamScopedEntities<TResult> Scope() => new(store, idOf);
 }

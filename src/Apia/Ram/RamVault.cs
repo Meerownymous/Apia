@@ -26,15 +26,18 @@ public sealed class RamVault<TResult> : IVault<TResult>
         }
     }
 
-    public Task Save(TResult record)
+    public Task<OneOf<TResult, Conflict<TResult>>> Save(TResult record)
     {
         lock (syncLock)
         {
             if (exists && versioned.Version != loadedVersion)
-                throw new ConcurrentModificationException(typeof(TResult), Guid.Empty);
+            {
+                var conflict = new Conflict<TResult>(versioned.Record, record);
+                return Task.FromResult(OneOf<TResult, Conflict<TResult>>.FromT1(conflict));
+            }
             versioned = new Versioned<TResult>(record, (exists ? versioned.Version : 0u) + 1);
             exists = true;
+            return Task.FromResult(OneOf<TResult, Conflict<TResult>>.FromT0(record));
         }
-        return Task.CompletedTask;
     }
 }

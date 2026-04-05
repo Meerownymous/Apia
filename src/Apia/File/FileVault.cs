@@ -54,7 +54,7 @@ public sealed class FileVault<TResult> : IVault<TResult>
         finally { writeLock.Release(); }
     }
 
-    public async Task Save(TResult record)
+    public async Task<OneOf<TResult, Conflict<TResult>>> Save(TResult record)
     {
         await writeLock.WaitAsync();
         try
@@ -67,7 +67,10 @@ public sealed class FileVault<TResult> : IVault<TResult>
                 if (existing is not null)
                 {
                     if (existing.Version != loadedVersion)
-                        throw new ConcurrentModificationException(typeof(TResult), Guid.Empty);
+                    {
+                        var conflict = new Conflict<TResult>(existing.Record, record);
+                        return OneOf<TResult, Conflict<TResult>>.FromT1(conflict);
+                    }
                     currentVersion = existing.Version;
                 }
             }
@@ -75,6 +78,7 @@ public sealed class FileVault<TResult> : IVault<TResult>
             var versioned = new Versioned<TResult>(record, currentVersion + 1);
             await using var writeStream = System.IO.File.Open(path, FileMode.Create, FileAccess.Write);
             await JsonSerializer.SerializeAsync(writeStream, versioned, JsonOptions);
+            return OneOf<TResult, Conflict<TResult>>.FromT0(record);
         }
         finally { writeLock.Release(); }
     }

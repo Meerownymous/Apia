@@ -27,10 +27,15 @@ public sealed class BufferedRamVault<TResult> : IVault<TResult>
         return result;
     }
 
-    public Task Save(TResult record)
+    public Task<OneOf<TResult, Conflict<TResult>>> Save(TResult record)
     {
         buffer[typeof(TResult)] = record!;
-        operations.Add(() => inner.Save(record));
-        return Task.CompletedTask;
+        operations.Add(async () =>
+        {
+            var result = await inner.Save(record);
+            if (result.IsT1)
+                throw new InvalidOperationException($"Conflict on flush: {typeof(TResult).Name} was modified by another process.");
+        });
+        return Task.FromResult(OneOf<TResult, Conflict<TResult>>.FromT0(record));
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Apia;
+using OneOf;
 
 namespace Apia.File;
 
@@ -28,32 +29,43 @@ public sealed class FileEntities<TRecord> : IEntities<TRecord>
         this.idOf = idOf;
     }
 
-    public async Task<TRecord> Fetch(Guid id)
+    public async Task<OneOf<TRecord, NotFound>> Load(Guid id)
     {
         await writeLock.WaitAsync();
         try
         {
             var store = await ReadUnsafe();
             if (!store.TryGetValue(id, out var versioned))
-                throw new KeyNotFoundException($"No {typeof(TRecord).Name} found with id {id}.");
+                return new NotFound();
             loadedVersions[id] = versioned.Version;
             return versioned.Record;
         }
         finally { writeLock.Release(); }
     }
 
-    public async Task Save(TRecord record)
+    public async Task<OneOf<TRecord, Conflict<TRecord>>> Save(TRecord record)
     {
         var id = idOf(record);
         await writeLock.WaitAsync();
         try
         {
             var store = await ReadUnsafe();
-            var nextVersion = store.TryGetValue(id, out var existing)
-                ? CheckAndIncrement(existing.Version, id)
-                : 1u;
-            store[id] = new Versioned<TRecord>(record, nextVersion);
+            if (store.TryGetValue(id, out var existing))
+            {
+                var expected = loadedVersions.GetValueOrDefault(id, 0u);
+                if (existing.Version != expected)
+                {
+                    var conflict = new Conflict<TRecord>(existing.Record, record);
+                    return OneOf<TRecord, Conflict<TRecord>>.FromT1(conflict);
+                }
+                store[id] = new Versioned<TRecord>(record, existing.Version + 1);
+            }
+            else
+            {
+                store[id] = new Versioned<TRecord>(record, 1u);
+            }
             await WriteUnsafe(store);
+            return OneOf<TRecord, Conflict<TRecord>>.FromT0(record);
         }
         finally { writeLock.Release(); }
     }
@@ -84,15 +96,11 @@ public sealed class FileEntities<TRecord> : IEntities<TRecord>
         }
         finally { writeLock.Release(); }
         foreach (var id in keys)
-            yield return await Fetch(id);
-    }
-
-    private uint CheckAndIncrement(uint currentVersion, Guid id)
-    {
-        var expected = loadedVersions.GetValueOrDefault(id, 0u);
-        if (currentVersion != expected)
-            throw new ConcurrentModificationException(typeof(TRecord), id);
-        return currentVersion + 1;
+        {
+            var result = await Load(id);
+            if (result.IsT0)
+                yield return result.AsT0;
+        }
     }
 
     private async Task<Dictionary<Guid, Versioned<TRecord>>> ReadUnsafe()

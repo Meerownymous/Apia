@@ -21,9 +21,9 @@ public sealed class RamMemory : IMemory
 
     public IEntities<TResult> Entities<TResult>()
     {
-        if (!entities.TryGetValue(typeof(TResult), out var entry))
+        if (!entities.TryGetValue(typeof(TResult), out var entry) || entry is not RamEntities<TResult> raw)
             throw new InvalidOperationException($"No IEntities<{typeof(TResult).Name}> registered.");
-        return (IEntities<TResult>)entry;
+        return raw.Scope();
     }
 
     public IVault<TResult> Vault<TResult>()

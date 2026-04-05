@@ -25,7 +25,7 @@ internal sealed class RamTransactionMemory : IMemory
     }
 
     public IEntities<TResult> Entities<TResult>() where TResult : notnull
-        => new BufferedRamEntities<TResult>(source.RawEntities<TResult>(), entitiesBuffer, operations, deletedMarker);
+        => new BufferedRamEntities<TResult>(source.RawEntities<TResult>().Scope(), entitiesBuffer, operations, deletedMarker);
 
     public IVault<TResult> Vault<TResult>() where TResult : notnull
         => new BufferedRamVault<TResult>(source.RawVault<TResult>(), vaultBuffer, operations);

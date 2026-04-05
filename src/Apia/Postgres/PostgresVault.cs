@@ -29,16 +29,18 @@ public sealed class PostgresVault<TResult> : IVault<TResult> where TResult : not
         return result;
     }
 
-    public async Task Save(TResult record)
+    public async Task<OneOf<TResult, Conflict<TResult>>> Save(TResult record)
     {
         var versionDoc     = await session.LoadAsync<ApiaVersion>(VersionId);
         var currentVersion = versionDoc?.Version ?? 0u;
-        if (HasConflict(currentVersion, loadedVersion))
-            throw new ConcurrentModificationException(typeof(TResult), SingletonId);
+        if (currentVersion > 0 && currentVersion != loadedVersion)
+        {
+            var current = await session.LoadAsync<TResult>(SingletonId);
+            var conflict = new Conflict<TResult>(current!, record);
+            return OneOf<TResult, Conflict<TResult>>.FromT1(conflict);
+        }
         session.Store(record);
         session.Store(new ApiaVersion(VersionId, typeof(TResult).Name, SingletonId, currentVersion + 1));
+        return OneOf<TResult, Conflict<TResult>>.FromT0(record);
     }
-
-    private static bool HasConflict(uint currentVersion, uint loadedVersion) =>
-        currentVersion > 0 && currentVersion != loadedVersion;
 }

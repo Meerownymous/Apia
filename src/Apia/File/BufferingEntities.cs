@@ -1,14 +1,21 @@
+using OneOf;
+
 namespace Apia.File;
 
 public sealed class BufferingEntities<TRecord>(FileEntities<TRecord> inner, List<Func<Task>> operations)
     : IEntities<TRecord>
 {
-    public Task<TRecord> Fetch(Guid id) => inner.Fetch(id);
+    public Task<OneOf<TRecord, NotFound>> Load(Guid id) => inner.Load(id);
 
-    public Task Save(TRecord record)
+    public Task<OneOf<TRecord, Conflict<TRecord>>> Save(TRecord record)
     {
-        operations.Add(() => inner.Save(record));
-        return Task.CompletedTask;
+        operations.Add(async () =>
+        {
+            var result = await inner.Save(record);
+            if (result.IsT1)
+                throw new InvalidOperationException($"Conflict on flush: {typeof(TRecord).Name} was modified by another process.");
+        });
+        return Task.FromResult(OneOf<TRecord, Conflict<TRecord>>.FromT0(record));
     }
 
     public Task Delete(Guid id)
