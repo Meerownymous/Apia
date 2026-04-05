@@ -9,7 +9,7 @@ public interface IEntities<TResult>
     IAsyncEnumerable<TResult> All();
 
     /// <summary>Load a record by id. Throws if not found.</summary>
-    Task<TResult> Load(Guid id);
+    Task<TResult> Fetch(Guid id);
 
     /// <summary>Save a record. Insert if new, optimistic update if known.</summary>
     Task Save(TResult record);

@@ -11,7 +11,7 @@ public sealed class BufferingEntities<TResult> : IEntities<TResult>
         this.operations = operations;
     }
 
-    public Task<TResult> Load(Guid id) => inner.Load(id);
+    public Task<TResult> Fetch(Guid id) => inner.Fetch(id);
 
     public Task Save(TResult record)
     {

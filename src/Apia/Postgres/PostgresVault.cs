@@ -23,9 +23,9 @@ public sealed class PostgresVault<TResult> : IVault<TResult> where TResult : not
         var record     = await session.LoadAsync<TResult>(SingletonId);
         var versionDoc = await session.LoadAsync<ApiaVersion>(VersionId);
         loadedVersion  = versionDoc?.Version ?? 0u;
-        var result = record is null
-            ? OneOf<TResult, NotFound>.FromT1(new NotFound())
-            : OneOf<TResult, NotFound>.FromT0(record);
+        OneOf<TResult, NotFound> result = record is null
+            ? new NotFound()
+            : record;
         return result;
     }
 
@@ -33,9 +33,12 @@ public sealed class PostgresVault<TResult> : IVault<TResult> where TResult : not
     {
         var versionDoc     = await session.LoadAsync<ApiaVersion>(VersionId);
         var currentVersion = versionDoc?.Version ?? 0u;
-        if (currentVersion > 0 && currentVersion != loadedVersion)
+        if (HasConflict(currentVersion, loadedVersion))
             throw new ConcurrentModificationException(typeof(TResult), SingletonId);
         session.Store(record);
         session.Store(new ApiaVersion(VersionId, typeof(TResult).Name, SingletonId, currentVersion + 1));
     }
+
+    private static bool HasConflict(uint currentVersion, uint loadedVersion) =>
+        currentVersion > 0 && currentVersion != loadedVersion;
 }

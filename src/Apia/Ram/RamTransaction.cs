@@ -82,12 +82,12 @@ internal sealed class BufferedRamEntities<TResult> : IEntities<TResult>
         this.deletedMarker = deletedMarker;
     }
 
-    public async Task<TResult> Load(Guid id)
+    public async Task<TResult> Fetch(Guid id)
     {
         var found = buffer.TryGetValue((typeof(TResult), id), out var buffered);
         if (ReferenceEquals(buffered, deletedMarker))
             throw new KeyNotFoundException($"No {typeof(TResult).Name} found with id {id}.");
-        var result = found ? (TResult)buffered! : await inner.Load(id);
+        var result = found ? (TResult)buffered! : await inner.Fetch(id);
         return result;
     }
 

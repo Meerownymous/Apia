@@ -28,7 +28,7 @@ public sealed class FileEntities<TResult> : IEntities<TResult>
         this.idOf = idOf;
     }
 
-    public async Task<TResult> Load(Guid id)
+    public async Task<TResult> Fetch(Guid id)
     {
         await writeLock.WaitAsync();
         try
@@ -84,7 +84,7 @@ public sealed class FileEntities<TResult> : IEntities<TResult>
         }
         finally { writeLock.Release(); }
         foreach (var id in keys)
-            yield return await Load(id);
+            yield return await Fetch(id);
     }
 
     private uint CheckAndIncrement(uint currentVersion, Guid id)

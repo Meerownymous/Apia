@@ -26,7 +26,7 @@ public sealed class RamEntities<TResult> : IEntities<TResult>
     {
     }
 
-    public Task<TResult> Load(Guid id)
+    public Task<TResult> Fetch(Guid id)
     {
         if (!store.TryGetValue(id, out var versioned))
             throw new KeyNotFoundException($"No {typeof(TResult).Name} found with id {id}.");

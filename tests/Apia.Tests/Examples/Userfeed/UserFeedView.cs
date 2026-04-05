@@ -29,7 +29,7 @@ public sealed class UserFeedSynopsisStream() : RamSynopsisStream<UserPostSummary
             }
         }
 
-        var author = await users.Load(query.UserId);
+        var author = await users.Fetch(query.UserId);
         var feed   = userPosts.OrderByDescending(p => p.CreatedAt).Take(query.Limit);
 
         foreach (var post in feed)
