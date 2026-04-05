@@ -8,10 +8,10 @@ namespace Apia.File;
 /// File-backed catalog. Persists as {TypeName}.json in the given directory.
 /// Thread-safe via SemaphoreSlim. Optimistic concurrency via internal versioning.
 /// </summary>
-public sealed class FileEntities<TResult> : IEntities<TResult>
+public sealed class FileEntities<TRecord> : IEntities<TRecord>
 {
     private readonly string path;
-    private readonly Func<TResult, Guid> idOf;
+    private readonly Func<TRecord, Guid> idOf;
     private readonly SemaphoreSlim writeLock = new(1, 1);
     private readonly ConcurrentDictionary<Guid, uint> loadedVersions = new();
 
@@ -21,28 +21,28 @@ public sealed class FileEntities<TResult> : IEntities<TResult>
         PropertyNameCaseInsensitive = true
     };
 
-    public FileEntities(string directory, Func<TResult, Guid> idOf)
+    public FileEntities(string directory, Func<TRecord, Guid> idOf)
     {
         Directory.CreateDirectory(directory);
-        path      = System.IO.Path.Combine(directory, $"{typeof(TResult).Name}.json");
+        path      = Path.Combine(directory, $"{typeof(TRecord).Name}.json");
         this.idOf = idOf;
     }
 
-    public async Task<TResult> Fetch(Guid id)
+    public async Task<TRecord> Fetch(Guid id)
     {
         await writeLock.WaitAsync();
         try
         {
             var store = await ReadUnsafe();
             if (!store.TryGetValue(id, out var versioned))
-                throw new KeyNotFoundException($"No {typeof(TResult).Name} found with id {id}.");
+                throw new KeyNotFoundException($"No {typeof(TRecord).Name} found with id {id}.");
             loadedVersions[id] = versioned.Version;
             return versioned.Record;
         }
         finally { writeLock.Release(); }
     }
 
-    public async Task Save(TResult record)
+    public async Task Save(TRecord record)
     {
         var id = idOf(record);
         await writeLock.WaitAsync();
@@ -52,7 +52,7 @@ public sealed class FileEntities<TResult> : IEntities<TResult>
             var nextVersion = store.TryGetValue(id, out var existing)
                 ? CheckAndIncrement(existing.Version, id)
                 : 1u;
-            store[id] = new Versioned<TResult>(record, nextVersion);
+            store[id] = new Versioned<TRecord>(record, nextVersion);
             await WriteUnsafe(store);
         }
         finally { writeLock.Release(); }
@@ -71,9 +71,9 @@ public sealed class FileEntities<TResult> : IEntities<TResult>
         finally { writeLock.Release(); }
     }
 
-    public Func<TResult, Guid> IdOf => idOf;
+    public Guid IdOf(TRecord record) => idOf(record);
 
-    public async IAsyncEnumerable<TResult> All()
+    public async IAsyncEnumerable<TRecord> All()
     {
         await writeLock.WaitAsync();
         List<Guid> keys;
@@ -91,27 +91,27 @@ public sealed class FileEntities<TResult> : IEntities<TResult>
     {
         var expected = loadedVersions.GetValueOrDefault(id, 0u);
         if (currentVersion != expected)
-            throw new ConcurrentModificationException(typeof(TResult), id);
+            throw new ConcurrentModificationException(typeof(TRecord), id);
         return currentVersion + 1;
     }
 
-    private async Task<Dictionary<Guid, Versioned<TResult>>> ReadUnsafe()
+    private async Task<Dictionary<Guid, Versioned<TRecord>>> ReadUnsafe()
     {
-        Dictionary<Guid, Versioned<TResult>> result;
+        Dictionary<Guid, Versioned<TRecord>> result;
         if (!System.IO.File.Exists(path))
         {
-            result = new Dictionary<Guid, Versioned<TResult>>();
+            result = new Dictionary<Guid, Versioned<TRecord>>();
         }
         else
         {
             await using var stream = System.IO.File.OpenRead(path);
-            var deserialized = await JsonSerializer.DeserializeAsync<Dictionary<Guid, Versioned<TResult>>>(stream, JsonOptions);
-            result = deserialized ?? new Dictionary<Guid, Versioned<TResult>>();
+            var deserialized = await JsonSerializer.DeserializeAsync<Dictionary<Guid, Versioned<TRecord>>>(stream, JsonOptions);
+            result = deserialized ?? new Dictionary<Guid, Versioned<TRecord>>();
         }
         return result;
     }
 
-    private async Task WriteUnsafe(Dictionary<Guid, Versioned<TResult>> store)
+    private async Task WriteUnsafe(Dictionary<Guid, Versioned<TRecord>> store)
     {
         await using var stream = System.IO.File.Open(path, FileMode.Create, FileAccess.Write);
         await JsonSerializer.SerializeAsync(stream, store, JsonOptions);

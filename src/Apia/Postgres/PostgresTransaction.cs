@@ -4,22 +4,16 @@ using Marten;
 
 namespace Apia.Postgres;
 
-public sealed class PostgresTransaction : ITransaction
+public sealed class PostgresTransaction(
+    IDocumentSession session,
+    ConcurrentDictionary<Type, object> entities,
+    ConcurrentDictionary<Type, object> vaults,
+    ConcurrentDictionary<(Type, Type), object> sources)
+    : ITransaction
 {
-    private readonly IDocumentSession session;
-    private readonly PostgresTransactionalMemory _postgresTransactionalMemory;
+    private readonly PostgresTransactionMemory postgresTransactionMemory = new(session, entities, vaults, sources);
 
-    internal PostgresTransaction(
-        IDocumentSession session,
-        ConcurrentDictionary<Type, object> entities,
-        ConcurrentDictionary<Type, object> vaults,
-        ConcurrentDictionary<(Type, Type), object> sources)
-    {
-        this.session        = session;
-        _postgresTransactionalMemory = new PostgresTransactionalMemory(session, entities, vaults, sources);
-    }
-
-    public IMemory Memory() => _postgresTransactionalMemory;
+    public IMemory Memory() => postgresTransactionMemory;
 
     public async Task Commit() => await session.SaveChangesAsync();
 

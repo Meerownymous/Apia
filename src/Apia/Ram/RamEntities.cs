@@ -58,9 +58,7 @@ public sealed class RamEntities<TResult> : IEntities<TResult>
         return Task.CompletedTask;
     }
 
-    internal string Label(TResult record) => label(record);
-
-    public Func<TResult, Guid> IdOf => idOf;
+    public Guid IdOf(TResult record) => idOf(record);
 
     public async IAsyncEnumerable<TResult> All()
     {

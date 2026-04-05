@@ -14,7 +14,7 @@ public sealed class PostgresEntities<TResult>(Func<TResult, Guid> idOf) : IEntit
     internal BoundPostgresEntities<TResult> Bind(IDocumentSession session)
         => new(session, idOf);
 
-    public Func<TResult, Guid> IdOf
+    public Guid IdOf(TResult record)
         => throw new InvalidOperationException("Use IMemory.Entities<T>() to access this store.");
 
     public IAsyncEnumerable<TResult> All()

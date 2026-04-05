@@ -1,19 +1,11 @@
 namespace Apia.File;
 
-public sealed class BufferingEntities<TResult> : IEntities<TResult>
+public sealed class BufferingEntities<TRecord>(FileEntities<TRecord> inner, List<Func<Task>> operations)
+    : IEntities<TRecord>
 {
-    private readonly FileEntities<TResult> inner;
-    private readonly List<Func<Task>> operations;
+    public Task<TRecord> Fetch(Guid id) => inner.Fetch(id);
 
-    public BufferingEntities(FileEntities<TResult> inner, List<Func<Task>> operations)
-    {
-        this.inner      = inner;
-        this.operations = operations;
-    }
-
-    public Task<TResult> Fetch(Guid id) => inner.Fetch(id);
-
-    public Task Save(TResult record)
+    public Task Save(TRecord record)
     {
         operations.Add(() => inner.Save(record));
         return Task.CompletedTask;
@@ -25,7 +17,7 @@ public sealed class BufferingEntities<TResult> : IEntities<TResult>
         return Task.CompletedTask;
     }
 
-    public Func<TResult, Guid> IdOf => inner.IdOf;
+    public Guid IdOf(TRecord record) => inner.IdOf(record);
 
-    public IAsyncEnumerable<TResult> All() => inner.All();
+    public IAsyncEnumerable<TRecord> All() => inner.All();
 }

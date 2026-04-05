@@ -3,7 +3,7 @@ using Marten;
 
 namespace Apia.Postgres;
 
-public sealed class PostgresTransactionalMemory(
+public sealed class PostgresTransactionMemory(
     IDocumentSession session,
     ConcurrentDictionary<Type, object> entities,
     ConcurrentDictionary<Type, object> vaults,
@@ -40,8 +40,7 @@ public sealed class PostgresTransactionalMemory(
         return ((ISynopsis<TResult, TQuery, (IMemory, IDocumentSession)>)source)
             .Build((this, session: session));
     }
-        
-
+    
     public ITransaction Begin()
         => throw new InvalidOperationException("Cannot begin a nested transaction.");
 }

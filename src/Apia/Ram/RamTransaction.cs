@@ -11,101 +11,28 @@ namespace Apia.Ram;
 /// </summary>
 public sealed class RamTransaction : ITransaction
 {
-    private readonly TransactionalRamMemory transactionalMemory;
+    private static readonly object DeletedMarker = new();
+    private readonly List<Func<Task>> operations = new();
+    private readonly ConcurrentDictionary<(Type, Guid), object> entitiesBuffer = new();
+    private readonly ConcurrentDictionary<Type, object> vaultBuffer = new();
+    private readonly RamTransactionMemory transactionMemory;
 
     internal RamTransaction(RamMemory memory)
     {
-        transactionalMemory = new TransactionalRamMemory(memory);
+        transactionMemory = new RamTransactionMemory(memory, entitiesBuffer, vaultBuffer, operations, DeletedMarker);
     }
 
-    public IMemory Memory() => transactionalMemory;
+    public IMemory Memory() => transactionMemory;
 
-    public async Task Commit() => await transactionalMemory.Flush();
-
-    public ValueTask DisposeAsync()
-    {
-        transactionalMemory.Discard();
-        return ValueTask.CompletedTask;
-    }
-}
-
-internal sealed class TransactionalRamMemory : IMemory
-{
-    private readonly RamMemory source;
-    private readonly List<Func<Task>> operations = new();
-    private static readonly object DeletedMarker = new();
-    private readonly ConcurrentDictionary<(Type, Guid), object> entitiesBuffer = new();
-    private readonly ConcurrentDictionary<Type, object> vaultBuffer = new();
-
-    internal TransactionalRamMemory(RamMemory source) => this.source = source;
-
-    public IEntities<TResult> Entities<TResult>()
-        => new BufferedRamEntities<TResult>(source.RawEntities<TResult>(), entitiesBuffer, operations, DeletedMarker);
-
-    public IVault<TResult> Vault<TResult>()
-        => new BufferedRamVault<TResult>(source.RawVault<TResult>(), vaultBuffer, operations);
-
-    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
-        => source.Views<TResult, TQuery>();
-
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
-        => source.View<TResult, TQuery>();
-
-    public ITransaction Begin()
-        => throw new InvalidOperationException("Cannot begin a nested transaction.");
-
-    internal async Task Flush()
+    public async Task Commit()
     {
         foreach (var op in operations)
             await op();
     }
 
-    internal void Discard() => operations.Clear();
-}
-
-internal sealed class BufferedRamEntities<TResult> : IEntities<TResult>
-{
-    private readonly RamEntities<TResult> inner;
-    private readonly ConcurrentDictionary<(Type, Guid), object> buffer;
-    private readonly List<Func<Task>> operations;
-    private readonly object deletedMarker;
-
-    internal BufferedRamEntities(
-        RamEntities<TResult> inner,
-        ConcurrentDictionary<(Type, Guid), object> buffer,
-        List<Func<Task>> operations,
-        object deletedMarker)
+    public ValueTask DisposeAsync()
     {
-        this.inner         = inner;
-        this.buffer        = buffer;
-        this.operations    = operations;
-        this.deletedMarker = deletedMarker;
+        operations.Clear();
+        return ValueTask.CompletedTask;
     }
-
-    public async Task<TResult> Fetch(Guid id)
-    {
-        var found = buffer.TryGetValue((typeof(TResult), id), out var buffered);
-        if (ReferenceEquals(buffered, deletedMarker))
-            throw new KeyNotFoundException($"No {typeof(TResult).Name} found with id {id}.");
-        var result = found ? (TResult)buffered! : await inner.Fetch(id);
-        return result;
-    }
-
-    public Task Save(TResult record)
-    {
-        buffer[(typeof(TResult), inner.IdOf(record))] = record!;
-        operations.Add(() => inner.Save(record));
-        return Task.CompletedTask;
-    }
-
-    public Task Delete(Guid id)
-    {
-        buffer[(typeof(TResult), id)] = deletedMarker;
-        operations.Add(() => inner.Delete(id));
-        return Task.CompletedTask;
-    }
-
-    public Func<TResult, Guid> IdOf => inner.IdOf;
-
-    public IAsyncEnumerable<TResult> All() => inner.All();
 }
