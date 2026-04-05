@@ -1,11 +1,11 @@
 namespace Apia.File;
 
-internal sealed class BufferingMemory : IMemory
+public sealed class BufferingMemory : IMemory
 {
     private readonly FileMemory source;
     private readonly List<Func<Task>> operations;
 
-    internal BufferingMemory(FileMemory source, List<Func<Task>> operations)
+    public BufferingMemory(FileMemory source, List<Func<Task>> operations)
     {
         this.source     = source;
         this.operations = operations;

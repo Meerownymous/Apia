@@ -1,11 +1,11 @@
 namespace Apia.File;
 
-internal sealed class BufferingEntities<TResult> : IEntities<TResult>
+public sealed class BufferingEntities<TResult> : IEntities<TResult>
 {
     private readonly FileEntities<TResult> inner;
     private readonly List<Func<Task>> operations;
 
-    internal BufferingEntities(FileEntities<TResult> inner, List<Func<Task>> operations)
+    public BufferingEntities(FileEntities<TResult> inner, List<Func<Task>> operations)
     {
         this.inner      = inner;
         this.operations = operations;
