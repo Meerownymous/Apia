@@ -45,11 +45,11 @@ internal sealed class TransactionalRamMemory : IMemory
     public IVault<TResult> Vault<TResult>()
         => new BufferedRamVault<TResult>(source.RawVault<TResult>(), vaultBuffer, operations);
 
-    public IViews<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
         => source.Views<TResult, TQuery>();
 
     public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
-        => throw new NotImplementedException();
+        => source.View<TResult, TQuery>();
 
     public ITransaction Begin()
         => throw new InvalidOperationException("Cannot begin a nested transaction.");

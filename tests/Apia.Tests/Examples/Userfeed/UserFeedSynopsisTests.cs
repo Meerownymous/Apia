@@ -1,4 +1,5 @@
 using Apia.Ram;
+using Apia.Tests.Examples.Userfeed;
 using Apia.Tests.Record;
 using Xunit;
 
@@ -13,7 +14,7 @@ public sealed class UserFeedProjectionTests
         map.Register(new RamEntities<PostRecord>(p => p.PostId));
         map.Register(new RamEntities<CommentRecord>(c => c.CommentId));
         map.Register(new RamEntities<UserRecord>(u => u.UserId));
-        map.Register(new UserFeedSynopsis());
+        map.Register(new UserFeedSynopsisStream());
         var memory = map.Build();
 
         UserRecord user1 = new(Guid.NewGuid(), "Miro");

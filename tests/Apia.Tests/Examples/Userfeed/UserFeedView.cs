@@ -2,9 +2,9 @@ using Apia.Ram;
 using Apia.Tests.Record;
 using Tonga.Enumerable;
 
-namespace Apia.Tests.Examples;
+namespace Apia.Tests.Examples.Userfeed;
 
-public sealed class UserFeedSynopsis() : RamSynopsis<UserPostSummaryProjection, UserFeedQuery>(Query)
+public sealed class UserFeedSynopsisStream() : RamSynopsisStream<UserPostSummaryProjection, UserFeedQuery>(Query)
 {
     private static async IAsyncEnumerable<UserPostSummaryProjection> Query(IMemory memory, UserFeedQuery query)
     {

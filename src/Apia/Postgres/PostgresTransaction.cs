@@ -60,16 +60,22 @@ internal sealed class TransactionalMemory : IMemory
             : new PostgresVault<TResult>(session);
     }
 
-    public IViews<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    {
+        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
+        return ((ISynopsisStream<TResult, TQuery, (IMemory, IDocumentSession)>)source)
+            .Build((this, session));
+    }
+
+    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
         return ((ISynopsis<TResult, TQuery, (IMemory, IDocumentSession)>)source)
             .Build((this, session));
     }
-
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
-        => throw new NotImplementedException();
+        
 
     public ITransaction Begin()
         => throw new InvalidOperationException("Cannot begin a nested transaction.");

@@ -9,7 +9,7 @@ public interface IMemory
     IVault<TResult> Vault<TResult>();
 
     /// <summary>Query a stream projection. Register the source via IMemoryMap.</summary>
-    IViews<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>;
+    IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>;
 
     /// <summary>Query a single-result projection. Register the source via IMemoryMap.</summary>
     IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>;

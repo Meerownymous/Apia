@@ -48,7 +48,7 @@ public sealed class PostgresMemoryMap : IMemoryMap
 
     /// <summary>Register a synopsis source. TContext is (IMemory, IDocumentSession) for Postgres.</summary>
     public void Register<TResult, TQuery>(
-        ISynopsis<TResult, TQuery, (IMemory Memory, IDocumentSession Session)> source)
+        ISynopsisStream<TResult, TQuery, (IMemory Memory, IDocumentSession Session)> source)
         where TQuery : Query<TResult>
         => sources[(typeof(TResult), typeof(TQuery))] = source;
 

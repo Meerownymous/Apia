@@ -48,11 +48,13 @@ internal sealed class BufferingMemory : IMemory
     public IVault<TResult> Vault<TResult>()
         => new BufferingVault<TResult>(source.GetFileVault<TResult>(), operations);
 
-    public IViews<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
         => source.GetSource<TResult, TQuery>().Build(source.Directory);
 
     public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+    //=> source.GetSource<TResult, TQuery>().Build(source.Directory);
         => throw new NotImplementedException();
+        
 
     public ITransaction Begin()
         => throw new InvalidOperationException("Cannot begin a nested transaction.");

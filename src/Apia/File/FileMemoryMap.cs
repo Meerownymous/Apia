@@ -22,7 +22,7 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
         => vaults[typeof(TResult)] = vault;
 
     /// <summary>Register a synopsis source. TContext is DirectoryInfo for File.</summary>
-    public void Register<TResult, TQuery>(ISynopsis<TResult, TQuery, DirectoryInfo> source)
+    public void Register<TResult, TQuery>(ISynopsisStream<TResult, TQuery, DirectoryInfo> source)
         where TQuery : Query<TResult>
         => sources[(typeof(TResult), typeof(TQuery))] = source;
 
