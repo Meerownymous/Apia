@@ -6,7 +6,7 @@ public interface IEntities<TResult>
     Func<TResult, Guid> IdOf { get; }
 
     /// <summary>Streams all stored ids.</summary>
-    IAsyncEnumerable<Guid> Ids();
+    IAsyncEnumerable<TResult> All();
 
     /// <summary>Load a record by id. Throws if not found.</summary>
     Task<TResult> Load(Guid id);

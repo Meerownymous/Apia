@@ -62,9 +62,9 @@ public sealed class RamEntities<TResult> : IEntities<TResult>
 
     public Func<TResult, Guid> IdOf => idOf;
 
-    public async IAsyncEnumerable<Guid> Ids()
+    public async IAsyncEnumerable<TResult> All()
     {
         foreach (var id in store.Keys)
-            yield return id;
+            yield return await Task.FromResult(store[id].Record);
     }
 }

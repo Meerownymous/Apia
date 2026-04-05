@@ -27,5 +27,5 @@ public sealed class BufferingEntities<TResult> : IEntities<TResult>
 
     public Func<TResult, Guid> IdOf => inner.IdOf;
 
-    public IAsyncEnumerable<Guid> Ids() => inner.Ids();
+    public IAsyncEnumerable<TResult> All() => inner.All();
 }

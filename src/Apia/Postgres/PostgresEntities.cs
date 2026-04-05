@@ -17,7 +17,7 @@ public sealed class PostgresEntities<TResult>(Func<TResult, Guid> idOf) : IEntit
     public Func<TResult, Guid> IdOf
         => throw new InvalidOperationException("Use IMemory.Entities<T>() to access this store.");
 
-    public IAsyncEnumerable<Guid> Ids()
+    public IAsyncEnumerable<TResult> All()
         => throw new InvalidOperationException("Use IMemory.Entities<T>() to access this store.");
 
     public Task<TResult> Load(Guid id)
@@ -31,7 +31,7 @@ public sealed class PostgresEntities<TResult>(Func<TResult, Guid> idOf) : IEntit
 }
 
 /// <summary>Session-bound catalog — created by PostgresMemory at query time.</summary>
-internal sealed class BoundPostgresEntities<TResult> : IEntities<TResult> where TResult : notnull
+public sealed class BoundPostgresEntities<TResult> : IEntities<TResult> where TResult : notnull
 {
     private readonly IDocumentSession session;
     private readonly Func<TResult, Guid> idOf;
@@ -45,11 +45,11 @@ internal sealed class BoundPostgresEntities<TResult> : IEntities<TResult> where 
 
     public Func<TResult, Guid> IdOf => idOf;
 
-    public async IAsyncEnumerable<Guid> Ids()
+    public async IAsyncEnumerable<TResult> All()
     {
-        var records = await session.Query<TResult>().ToListAsync();
-        foreach (var record in records)
-            yield return idOf(record);
+        var records = session.Query<TResult>().ToAsyncEnumerable();
+        await foreach (var record in records)
+            yield return record;
     }
 
     public async Task<TResult> Load(Guid id)

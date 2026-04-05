@@ -73,7 +73,7 @@ public sealed class FileEntities<TResult> : IEntities<TResult>
 
     public Func<TResult, Guid> IdOf => idOf;
 
-    public async IAsyncEnumerable<Guid> Ids()
+    public async IAsyncEnumerable<TResult> All()
     {
         await writeLock.WaitAsync();
         List<Guid> keys;
@@ -84,7 +84,7 @@ public sealed class FileEntities<TResult> : IEntities<TResult>
         }
         finally { writeLock.Release(); }
         foreach (var id in keys)
-            yield return id;
+            yield return await Load(id);
     }
 
     private uint CheckAndIncrement(uint currentVersion, Guid id)
