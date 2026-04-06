@@ -1,6 +1,6 @@
-namespace Apia;
+namespace Apia.Ram.Core;
 
-public interface IViewStreamTmp<TResult>
+public interface IViewStreamTmp<out TResult, TQueryTarget>
 {
-    IAsyncEnumerable<TResult> Query(IQuery<TResult> query);
+    IAsyncEnumerable<TResult> Query(IQuery<TQueryTarget> query);
 }

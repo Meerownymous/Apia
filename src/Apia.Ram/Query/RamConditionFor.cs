@@ -1,10 +1,10 @@
 namespace Apia.Ram.Query;
 
-internal sealed class RamConditionFor<T> : IRamCondition<T>
+public sealed class RamConditionFor<T> : IRamCondition<T>
 {
     private readonly IRamCondition<T> inner;
 
-    internal RamConditionFor(ConditionNode node)
+    public RamConditionFor(ConditionNode node)
     {
         IRamCondition<T> raw = node switch
         {

@@ -1,9 +1,11 @@
+using Apia.Ram.Core;
+
 namespace Apia.Ram;
 
-public abstract class RamSynopsisStreamTmp<TResult>(
-    Func<IMemoryTmp, IQuery<TResult>, IAsyncEnumerable<TResult>> filter
-): ISynopsisStreamTmp<TResult, IMemoryTmp>
+public abstract class RamSynopsisStreamTmp<TResult, TQueryTarget>(
+    Func<IMemoryTmp, IQuery<TQueryTarget>, IAsyncEnumerable<TResult>> filter
+): ISynopsisStreamTmp<TResult, TQueryTarget, IMemoryTmp>
 {
-    public IViewStreamTmp<TResult> Build(IMemoryTmp memory)
-        => new RamBoundViewStream<TResult>(memory, filter);
+    public IViewStreamTmp<TResult, TQueryTarget> Build(IMemoryTmp memory)
+        => new RamBoundViewStream<TResult, TQueryTarget>(memory, filter);
 }

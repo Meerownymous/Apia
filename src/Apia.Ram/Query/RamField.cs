@@ -2,7 +2,7 @@ using System.Reflection;
 
 namespace Apia.Ram.Query;
 
-internal sealed class RamField<T>(string name)
+public sealed class RamField<T>(string name)
 {
     private readonly PropertyInfo property =
         typeof(T).GetProperty(name, BindingFlags.Public | BindingFlags.Instance)

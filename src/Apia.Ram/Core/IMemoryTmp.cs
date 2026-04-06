@@ -1,10 +1,10 @@
-namespace Apia;
+namespace Apia.Ram.Core;
 
 public interface IMemoryTmp
 {
-    IEntitiesTmp<TResult>   Entities<TResult>() where TResult : notnull;
-    IVault<TResult>         Vault<TResult>()    where TResult : notnull;
-    IViewStreamTmp<TResult> Views<TResult>()    where TResult : notnull;
-    IViewTmp<TResult>       View<TResult>()     where TResult : notnull;
-    ITransaction            Begin();
+    IEntitiesTmp<TEntity> Entities<TEntity>() where TEntity : notnull;
+    IVault<TContent> Vault<TContent>()    where TContent : notnull;
+    IViewStreamTmp<TView, TQueryTarget> Views<TView, TQueryTarget>()    where TView : notnull;
+    IViewTmp<TView> View<TView>()     where TView : notnull;
+    ITransaction Begin();
 }

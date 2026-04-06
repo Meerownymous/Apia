@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Apia;
+using Apia.Ram.Core;
 
 namespace Apia.Ram;
 
@@ -37,11 +38,11 @@ public sealed class RamMemory : IMemoryTmp
         return (IVault<TResult>)vault;
     }
     
-    public IViewStreamTmp<TResult> Views<TResult>() where TResult : notnull
+    public IViewStreamTmp<TResult, TQueryTarget> Views<TResult, TQueryTarget>() where TResult : notnull
     {
         if (!tmpSources.TryGetValue(typeof(TResult), out var source))
             throw new InvalidOperationException($"No ISynopsisStreamTmp<{typeof(TResult).Name}> registered.");
-        return ((ISynopsisStreamTmp<TResult, IMemoryTmp>)source).Build(this);
+        return ((ISynopsisStreamTmp<TResult, TQueryTarget, IMemoryTmp>)source).Build(this);
     }
     
     public IViewTmp<TResult> View<TResult>() where TResult : notnull

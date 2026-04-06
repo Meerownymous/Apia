@@ -1,6 +1,6 @@
 namespace Apia.Ram.Query;
 
-internal interface IRamCondition<T>
+public interface IRamCondition<in T>
 {
     bool Matches(T item);
 }

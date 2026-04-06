@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Apia;
+using Apia.Ram.Core;
 
 namespace Apia.Ram;
 
@@ -23,7 +24,7 @@ public sealed class RamMemoryMap : IMemoryMapTmp
         => vaults[typeof(TResult)] = vault;
 
     /// <summary>Register a new-style synopsis stream source (Filter&lt;TResult&gt;-based).</summary>
-    public void Register<TResult>(ISynopsisStreamTmp<TResult, IMemoryTmp> source)
+    public void Register<TResult, TQueryTarget>(ISynopsisStreamTmp<TResult, TQueryTarget, IMemoryTmp> source)
         => tmpSources[typeof(TResult)] = source;
 
     /// <summary>Register a new-style single-result synopsis source (Filter&lt;TResult&gt;-based).</summary>

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Apia.Ram.Core;
 
 namespace Apia.Ram;
 
@@ -30,7 +31,8 @@ internal sealed class RamTransactionMemory : IMemoryTmp
     public IVault<TResult> Vault<TResult>() where TResult : notnull
         => new BufferedRamVault<TResult>(source.RawVault<TResult>(), vaultBuffer, operations);
 
-    public IViewStreamTmp<TResult> Views<TResult>() where TResult : notnull => source.Views<TResult>();
+    public IViewStreamTmp<TResult, TQueryTarget> Views<TResult, TQueryTarget>() where TResult : notnull => 
+        source.Views<TResult, TQueryTarget>();
 
     public IViewTmp<TResult> View<TResult>() where TResult : notnull => source.View<TResult>();
 

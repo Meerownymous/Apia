@@ -1,6 +1,6 @@
 namespace Apia.Ram.Query;
 
-internal sealed class RamEquals<T>(EqualsNode node) : IRamCondition<T>
+public sealed class RamEquals<T>(EqualsNode node) : IRamCondition<T>
 {
     private readonly RamField<T> field = new(node.Field);
 

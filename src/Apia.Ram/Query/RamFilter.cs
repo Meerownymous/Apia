@@ -1,6 +1,6 @@
 namespace Apia.Ram.Query;
 
-internal sealed class RamFilter<T>
+public sealed class RamFilter<T>
 {
     private Func<T, bool> predicate = _ => true;
 

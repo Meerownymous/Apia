@@ -1,50 +1,46 @@
+using Apia.Ram.Core;
 using Apia.Tests.Record;
-using Tonga.Enumerable;
 
 namespace Apia.Ram.Tests.Examples.UseCases.Userfeed;
 
 
-public sealed class UserFeedSynopsis() : RamSynopsisStreamTmp<UserPostSummaryProjection>(Query)
+public sealed class UserFeedSynopsis() : RamSynopsisStreamTmp<UserPostSummary, UserRecord>(Query)
 {
-    private static async IAsyncEnumerable<UserPostSummaryProjection> Query(IMemoryTmp memory, IQuery<UserPostSummaryProjection> query)
+    private static async IAsyncEnumerable<UserPostSummary> Query(IMemoryTmp memory, IQuery<UserRecord> query)
     {
-        var posts    = memory.Entities<PostRecord>();
+        var posts = memory.Entities<PostRecord>();
         var comments = memory.Entities<CommentRecord>();
-        var users    = memory.Entities<UserRecord>();
+        var users = memory.Entities<UserRecord>();
+        
+        var match = await users.FindSingle(query);
 
-        var userPosts = new List<PostRecord>();
-        await foreach (var post in posts.All())
+        if (match.IsT0)
         {
-            if (post.AuthorId == queryRecord.UserId)
-                userPosts.Add(post);
-        }
-
-        var commentCounts = new Dictionary<Guid, int>();
-        await foreach (var comment in comments.Find())
-        {
-            if (userPosts.AsMapped(p => p.PostId).Contains(comment.PostId))
+            var user =  match.AsT0;
+            var feed = 
+                (await posts.Find(new Query<PostRecord>().Where(p => p.PostId).Is(user.UserId)).ToArrayAsync())
+                .OrderByDescending(p => p.CreatedAt);
+                
+            foreach (var post in feed)
             {
-                commentCounts.TryGetValue(comment.PostId, out var count);
-                commentCounts[comment.PostId] = count + 1;
+                var commentCount = 
+                    await 
+                        comments.Find(new Query<CommentRecord>().Where(c => c.PostId).Is(post.PostId))
+                            .CountAsync();
+                    
+                yield return new UserPostSummary(
+                    PostId:       post.PostId,
+                    AuthorName:   user.Username,
+                    Content:      post.Content,
+                    LikeCount:    post.LikeCount,
+                    CommentCount: commentCount,
+                    CreatedAt:    post.CreatedAt
+                );
             }
         }
 
-        var userResult = await users.Load(queryRecord.UserId);
-        if (userResult.IsT1) yield break;
-        var author = userResult.AsT0;
-        var feed   = userPosts.OrderByDescending(p => p.CreatedAt).Take(queryRecord.Limit);
-
-        foreach (var post in feed)
-        {
-            commentCounts.TryGetValue(post.PostId, out var commentCount);
-            yield return new UserPostSummaryProjection(
-                PostId:       post.PostId,
-                AuthorName:   author.Username,
-                Content:      post.Content,
-                LikeCount:    post.LikeCount,
-                CommentCount: commentCount,
-                CreatedAt:    post.CreatedAt
-            );
-        }
+        if (match.IsT1) throw new ArgumentException("User not found");
+        if (match.IsT2)
+            throw new ArgumentException($"Ambiguous user query, {match.AsT2.Candidates.Count} candidates found.");
     }
 }

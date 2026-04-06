@@ -1,3 +1,4 @@
+using Apia.Ram.Tests.Assert;
 using Apia.Tests.Record;
 using Xunit;
 
@@ -24,7 +25,18 @@ public sealed class UserFeedProjectionTests
         await memory.Entities<PostRecord>().Save(post);
         await memory.Entities<CommentRecord>().Save(comment);
 
-        // Im UseCase:
-        //todo: baue userfeedprojection
+        AssertRecord.Satisfies(
+            new UserFeedSynopsis()
+            {
+                    
+            },
+            await
+                memory.Views<UserPostSummary, UserRecord>()
+                    .Query(
+                        new Query<UserRecord>()
+                            .Where(user => user.UserId)
+                            .Is(user1.UserId)
+                    ).FirstAsync()
+        );
     }
 }

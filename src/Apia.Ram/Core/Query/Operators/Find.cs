@@ -1,3 +1,5 @@
+using Apia.Ram.Core;
+
 namespace Apia;
 
 public static partial class QueryExtensions

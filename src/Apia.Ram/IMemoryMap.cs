@@ -1,3 +1,5 @@
+using Apia.Ram.Core;
+
 namespace Apia;
 
 public interface IMemoryMapTmp

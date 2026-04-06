@@ -1,7 +1,8 @@
 using System.Collections.Concurrent;
 using OneOf;
 using Apia;
-using Apia.Ram.Ram.Query;
+using Apia.Ram.Core;
+using Apia.Ram.Query;
 
 namespace Apia.Ram;
 

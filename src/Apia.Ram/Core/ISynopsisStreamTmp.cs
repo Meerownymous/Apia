@@ -1,6 +1,6 @@
-namespace Apia;
+namespace Apia.Ram.Core;
 
-public interface ISynopsisStreamTmp<TResult, in TContext>
+public interface ISynopsisStreamTmp<TResult, TQueryTarget, in TContext>
 {
-    IViewStreamTmp<TResult> Build(TContext context);
+    IViewStreamTmp<TResult, TQueryTarget> Build(TContext context);
 }

@@ -1,7 +1,6 @@
-using Apia.Ram.Query;
 using Tonga.Enumerable;
 
-namespace Apia.Ram.Ram.Query;
+namespace Apia.Ram.Query;
 
 public sealed class RamQueryResult<T>(IQuery<T> query, IEnumerable<T> source) : EnumerableEnvelope<T>(() =>
 {

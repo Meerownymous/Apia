@@ -1,6 +1,6 @@
 using OneOf;
 
-namespace Apia;
+namespace Apia.Ram.Core;
 
 public interface IEntitiesTmp<TRecord>
 {
