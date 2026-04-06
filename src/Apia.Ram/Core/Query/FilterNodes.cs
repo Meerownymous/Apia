@@ -1,20 +1,16 @@
-namespace Apia.Query;
+namespace Apia;
 
 public enum Connector { None, And, Or }
 
-public enum FilterOp { Equals, IsAfter, Contains }
-
 public abstract record FilterNode(Connector Connector);
 
-public sealed record ConditionNode(
+public abstract record ConditionNode(
     Connector Connector,
     string    Field,
-    FilterOp  Op,
-    object?   Value,
-    bool      IgnoreCase = false) : FilterNode(Connector);
+    bool      Negated = false) : FilterNode(Connector);
 
 public sealed record GroupNode(
-    Connector              Connector,
+    Connector                 Connector,
     IReadOnlyList<FilterNode> Nodes) : FilterNode(Connector);
 
 public sealed record OrderNode(string Field, bool Descending);

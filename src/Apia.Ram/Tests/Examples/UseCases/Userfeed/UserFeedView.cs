@@ -1,12 +1,12 @@
-using Apia.Ram;
 using Apia.Tests.Record;
 using Tonga.Enumerable;
 
-namespace Apia.Tests.Examples.Userfeed;
+namespace Apia.Ram.Tests.Examples.UseCases.Userfeed;
 
-public sealed class UserFeedSynopsisStream() : RamSynopsisStreamTmp<UserPostSummaryProjection>(Query)
+
+public sealed class UserFeedSynopsis() : RamSynopsisStreamTmp<UserPostSummaryProjection>(Query)
 {
-    private static async IAsyncEnumerable<UserPostSummaryProjection> Query(IMemory memory)
+    private static async IAsyncEnumerable<UserPostSummaryProjection> Query(IMemoryTmp memory, IQuery<UserPostSummaryProjection> query)
     {
         var posts    = memory.Entities<PostRecord>();
         var comments = memory.Entities<CommentRecord>();
@@ -20,7 +20,7 @@ public sealed class UserFeedSynopsisStream() : RamSynopsisStreamTmp<UserPostSumm
         }
 
         var commentCounts = new Dictionary<Guid, int>();
-        await foreach (var comment in comments.All())
+        await foreach (var comment in comments.Find())
         {
             if (userPosts.AsMapped(p => p.PostId).Contains(comment.PostId))
             {

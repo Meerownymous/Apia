@@ -1,5 +1,3 @@
-using Apia.Query;
-
 namespace Apia;
 
 public interface IQueryVisitor<T>
