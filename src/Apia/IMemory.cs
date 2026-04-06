@@ -9,10 +9,10 @@ public interface IMemory
     IVault<TResult> Vault<TResult>() where TResult : notnull;
 
     /// <summary>Query a stream projection. Register the source via IMemoryMap.</summary>
-    IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>;
+    IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : QueryRecord<TResult>;
 
     /// <summary>Query a single-result projection. Register the source via IMemoryMap.</summary>
-    IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>;
+    IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : QueryRecord<TResult>;
 
     /// <summary>Begin a transaction. Commit() to persist, or dispose to rollback.</summary>
     ITransaction Begin();

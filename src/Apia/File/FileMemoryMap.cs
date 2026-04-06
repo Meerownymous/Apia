@@ -23,7 +23,7 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
 
     /// <summary>Register a synopsis source. TContext is DirectoryInfo for File.</summary>
     public void Register<TResult, TQuery>(ISynopsisStream<TResult, TQuery, DirectoryInfo> source)
-        where TQuery : Query<TResult>
+        where TQuery : QueryRecord<TResult>
         => sources[(typeof(TResult), typeof(TQuery))] = source;
 
     /// <inheritdoc/>

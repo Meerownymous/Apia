@@ -22,7 +22,7 @@ public sealed class RamTransaction : ITransaction
         transactionMemory = new RamTransactionMemory(memory, entitiesBuffer, vaultBuffer, operations, DeletedMarker);
     }
 
-    public IMemory Memory() => transactionMemory;
+    public IMemoryTmp Memory() => transactionMemory;
 
     public async Task Commit()
     {

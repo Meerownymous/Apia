@@ -38,14 +38,14 @@ public sealed class FileMemory : IMemory
         return (IVault<TResult>)vault;
     }
 
-    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : QueryRecord<TResult>
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
         return ((ISynopsisStream<TResult, TQuery, DirectoryInfo>)source).Build(directory);
     }
 
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : QueryRecord<TResult>
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
@@ -69,7 +69,7 @@ public sealed class FileMemory : IMemory
     }
     
     internal ISynopsisStream<TResult, TQuery, DirectoryInfo> GetSource<TResult, TQuery>()
-        where TQuery : Query<TResult>
+        where TQuery : QueryRecord<TResult>
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");

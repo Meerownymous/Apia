@@ -1,9 +1,8 @@
-using Apia.Ram;
 using Apia.Tests.Examples.Userfeed;
 using Apia.Tests.Record;
 using Xunit;
 
-namespace Apia.Tests.Examples;
+namespace Apia.Ram.Tests.Examples.UseCases.Userfeed;
 
 public sealed class UserFeedProjectionTests
 {
@@ -27,10 +26,6 @@ public sealed class UserFeedProjectionTests
         await memory.Entities<CommentRecord>().Save(comment);
 
         // Im UseCase:
-        var feed = 
-            await
-                memory.Views<UserPostSummaryProjection, UserFeedQuery>()
-                    .Query(new(user1.UserId, Limit: 20))
-                    .ToListAsync();
+        //todo: baue userfeedprojection
     }
 }

@@ -25,7 +25,7 @@ public sealed class PostgresTransactionMemory(
             : new PostgresVault<TResult>(session);
     }
 
-    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : QueryRecord<TResult>
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
@@ -33,7 +33,7 @@ public sealed class PostgresTransactionMemory(
             .Build((this, session: session));
     }
 
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : QueryRecord<TResult>
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");

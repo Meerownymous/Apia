@@ -3,15 +3,15 @@ using OneOf;
 
 namespace Apia.Ram;
 
-internal sealed class BufferedRamEntities<TRecord> : IEntities<TRecord>
+internal sealed class BufferedRamEntities<TRecord> : IEntitiesTmp<TRecord>
 {
-    private readonly IEntities<TRecord> inner;
+    private readonly IEntitiesTmp<TRecord> inner;
     private readonly ConcurrentDictionary<(Type, Guid), object> buffer;
     private readonly List<Func<Task>> operations;
     private readonly object deletedMarker;
 
     internal BufferedRamEntities(
-        IEntities<TRecord> inner,
+        IEntitiesTmp<TRecord> inner,
         ConcurrentDictionary<(Type, Guid), object> buffer,
         List<Func<Task>> operations,
         object deletedMarker)
@@ -53,5 +53,5 @@ internal sealed class BufferedRamEntities<TRecord> : IEntities<TRecord>
 
     public Guid IdOf(TRecord record) => inner.IdOf(record);
 
-    public IAsyncEnumerable<TRecord> All() => inner.All();
+    public IAsyncEnumerable<TRecord> Find(IQuery<TRecord> query) => inner.Find(query);
 }

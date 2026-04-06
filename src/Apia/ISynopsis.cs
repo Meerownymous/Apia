@@ -1,6 +1,6 @@
 namespace Apia;
 
-public interface ISynopsis<TResult, in TQuery, in TContext> where TQuery : Query<TResult>
+public interface ISynopsis<TResult, in TQuery, in TContext> where TQuery : QueryRecord<TResult>
 {
     /// <summary>
     /// Build a views projection bound to the given context.

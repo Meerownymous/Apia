@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace Apia.Ram;
 
-internal sealed class RamTransactionMemory : IMemory
+internal sealed class RamTransactionMemory : IMemoryTmp
 {
     private readonly RamMemory source;
     private readonly ConcurrentDictionary<(Type, Guid), object> entitiesBuffer;
@@ -24,17 +24,15 @@ internal sealed class RamTransactionMemory : IMemory
         this.deletedMarker = deletedMarker;
     }
 
-    public IEntities<TResult> Entities<TResult>() where TResult : notnull
+    public IEntitiesTmp<TResult> Entities<TResult>() where TResult : notnull
         => new BufferedRamEntities<TResult>(source.RawEntities<TResult>().Scope(), entitiesBuffer, operations, deletedMarker);
 
     public IVault<TResult> Vault<TResult>() where TResult : notnull
         => new BufferedRamVault<TResult>(source.RawVault<TResult>(), vaultBuffer, operations);
 
-    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
-        => source.Views<TResult, TQuery>();
+    public IViewStreamTmp<TResult> Views<TResult>() where TResult : notnull => source.Views<TResult>();
 
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
-        => source.View<TResult, TQuery>();
+    public IViewTmp<TResult> View<TResult>() where TResult : notnull => source.View<TResult>();
 
     public ITransaction Begin()
         => throw new InvalidOperationException("Cannot begin a nested transaction.");

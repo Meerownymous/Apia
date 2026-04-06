@@ -1,22 +1,21 @@
 using System.Collections.Concurrent;
 using OneOf;
 using Apia;
+using Apia.Ram.Ram.Query;
 
 namespace Apia.Ram;
 
-/// <summary>
-/// In-memory catalog backed by ConcurrentDictionary.
-/// idOf: extracts the Guid key from a record — e.g. p => p.PostId.
-/// label: optional debug label, no effect on storage.
-/// </summary>
-public sealed class RamEntities<TResult>(Func<TResult, Guid> idOf, Func<TResult, string> label) : IEntities<TResult>
+internal sealed class RamScopedEntities<TResult> : IEntitiesTmp<TResult>
 {
-    private readonly ConcurrentDictionary<Guid, Versioned<TResult>> store = new();
+    private readonly ConcurrentDictionary<Guid, Versioned<TResult>> store;
+    private readonly Func<TResult, Guid> idOf;
     private readonly ConcurrentDictionary<Guid, uint> loadedVersions = new();
 
-    public RamEntities(Func<TResult, Guid> idOf)
-        : this(idOf, r => idOf(r).ToString())
-    { }
+    internal RamScopedEntities(ConcurrentDictionary<Guid, Versioned<TResult>> store, Func<TResult, Guid> idOf)
+    {
+        this.store = store;
+        this.idOf  = idOf;
+    }
 
     public Task<OneOf<TResult, NotFound>> Load(Guid id)
     {
@@ -40,7 +39,6 @@ public sealed class RamEntities<TResult>(Func<TResult, Guid> idOf, Func<TResult,
             var next = new Versioned<TResult>(record, existing.Version + 1);
             if (!store.TryUpdate(id, next, existing))
             {
-                // Another thread wrote between our TryGetValue and TryUpdate
                 store.TryGetValue(id, out var current);
                 var conflict = new Conflict<TResult>(current!.Record, record);
                 return Task.FromResult(OneOf<TResult, Conflict<TResult>>.FromT1(conflict));
@@ -50,7 +48,6 @@ public sealed class RamEntities<TResult>(Func<TResult, Guid> idOf, Func<TResult,
         {
             if (!store.TryAdd(id, new Versioned<TResult>(record, 1)))
             {
-                // Another thread inserted between our TryGetValue and TryAdd
                 store.TryGetValue(id, out var current);
                 var conflict = new Conflict<TResult>(current!.Record, record);
                 return Task.FromResult(OneOf<TResult, Conflict<TResult>>.FromT1(conflict));
@@ -74,7 +71,10 @@ public sealed class RamEntities<TResult>(Func<TResult, Guid> idOf, Func<TResult,
             yield return await Task.FromResult(kv.Value.Record);
     }
 
-    internal string Label(TResult record) => label(record);
-
-    internal RamScopedEntities<TResult> Scope() => new(store, idOf);
+    public async IAsyncEnumerable<TResult> Find(IQuery<TResult> query)
+    {
+        var source = store.Values.Select(v => v.Record);
+        foreach (var item in new RamQueryResult<TResult>(query, source))
+            yield return await Task.FromResult(item);
+    }
 }

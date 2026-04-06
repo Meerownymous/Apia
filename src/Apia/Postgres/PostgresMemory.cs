@@ -38,7 +38,7 @@ public sealed class PostgresMemory : IMemory
             : new PostgresVault<TResult>(store.LightweightSession());
     }
 
-    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : QueryRecord<TResult>
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
@@ -46,7 +46,7 @@ public sealed class PostgresMemory : IMemory
             .Build((this, store.LightweightSession()));
     }
 
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : QueryRecord<TResult>
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
