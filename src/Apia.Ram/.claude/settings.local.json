@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(export PATH=\"$PATH:/usr/local/share/dotnet:/usr/share/dotnet:$HOME/.dotnet\")",
+      "Read(//Users/meerow/Documents/Coding/Apia/**)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(/usr/local/share/dotnet/dotnet test:*)"
+    ]
+  }
+}
