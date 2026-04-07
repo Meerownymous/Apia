@@ -47,7 +47,7 @@ public sealed class BoundPostgresEntities<TRecord> : IEntities<TRecord> where TR
             return OneOf<TRecord, Conflict<TRecord>>.FromT1(conflict);
         }
         session.Store(record);
-        session.Store(new ApiaVersion(typeof(TRecord).Name, id, currentVersion + 1));
+        session.Store(new ApiaVersion(VersionId(id), typeof(TRecord).Name, id, currentVersion + 1));
         return OneOf<TRecord, Conflict<TRecord>>.FromT0(record);
     }
 

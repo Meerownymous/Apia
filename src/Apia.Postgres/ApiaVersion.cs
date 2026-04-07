@@ -5,7 +5,7 @@ namespace Apia.Postgres;
 /// One record per (RecordType, RecordId) pair.
 /// </summary>
 internal sealed record ApiaVersion(
-    //Guid Id,
+    Guid Id,
     string RecordType,
     Guid RecordId,
     uint Version
