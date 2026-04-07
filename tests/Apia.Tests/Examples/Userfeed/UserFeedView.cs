@@ -4,9 +4,9 @@ using Tonga.Enumerable;
 
 namespace Apia.Tests.Examples.Userfeed;
 
-public sealed class UserFeedSynopsisStream() : RamSynopsisStream<UserPostSummaryProjection, UserFeedQuery>(Query)
+public sealed class UserFeedSynopsisStream() : RamSynopsisStream<UserPostSummaryView, UserFeedQuery>(Query)
 {
-    private static async IAsyncEnumerable<UserPostSummaryProjection> Query(IMemory memory, UserFeedQuery query)
+    private static async IAsyncEnumerable<UserPostSummaryView> Query(IMemory memory, UserFeedQuery query)
     {
         var posts    = memory.Entities<PostRecord>();
         var comments = memory.Entities<CommentRecord>();
@@ -37,7 +37,7 @@ public sealed class UserFeedSynopsisStream() : RamSynopsisStream<UserPostSummary
         foreach (var post in feed)
         {
             commentCounts.TryGetValue(post.PostId, out var commentCount);
-            yield return new UserPostSummaryProjection(
+            yield return new UserPostSummaryView(
                 PostId:       post.PostId,
                 AuthorName:   author.Username,
                 Content:      post.Content,

@@ -1,11 +1,11 @@
 namespace Apia;
 
-public interface ISynopsis<TResult, in TQuery, in TContext> where TQuery : Query<TResult>
+public interface ISynopsis<TView, in TSeed, in TSource> where TSeed : notnull
 {
     /// <summary>
     /// Build a views projection bound to the given context.
     /// TContext is injected by the memory at query time —
     /// Ram passes IMemory, File passes DirectoryInfo, Postgres passes (IMemory, IDocumentSession).
     /// </summary>
-    IView<TResult, TQuery> Build(TContext context);
+    IView<TView, TSeed> Build(TSource source);
 }

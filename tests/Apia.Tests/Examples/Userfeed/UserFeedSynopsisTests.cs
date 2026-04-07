@@ -19,7 +19,7 @@ public sealed class UserFeedProjectionTests
 
         UserRecord user1 = new(Guid.NewGuid(), "Miro");
         UserRecord user2 = new(Guid.NewGuid(), "Ralph");
-        PostRecord post = new(Guid.NewGuid(), user1.UserId, "Great Unittest discovered", LikeCount: 1, new HashSet<Guid>(), DateTime.Now );
+        PostRecord post = new(Guid.NewGuid(), user1.UserId, "Great Unittest discovered", LikeCount: 1, new HashSet<Guid>(), DateTime.Now);
         CommentRecord comment = new (Guid.NewGuid(), post.PostId, user2.UserId, "My cat's breath smells like cat food", DateTime.Now);
         await memory.Entities<UserRecord>().Save(user1);
         await memory.Entities<UserRecord>().Save(user2);
@@ -29,8 +29,8 @@ public sealed class UserFeedProjectionTests
         // Im UseCase:
         var feed = 
             await
-                memory.Views<UserPostSummaryProjection, UserFeedQuery>()
-                    .Query(new(user1.UserId, Limit: 20))
+                memory.ViewStream<UserPostSummaryView, UserFeedQuery>()
+                    .Build(new(user1.UserId, Limit: 20))
                     .ToListAsync();
     }
 }

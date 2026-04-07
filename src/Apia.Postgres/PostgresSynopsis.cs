@@ -7,5 +7,5 @@ public abstract class PostgresSynopsis<T, TQuery>(IDocumentSession session) : IV
     where TQuery : Query<T>
     where T : notnull
 {
-    public abstract IAsyncEnumerable<T> Query(TQuery query);
+    public abstract IAsyncEnumerable<T> Build(TQuery query);
 }

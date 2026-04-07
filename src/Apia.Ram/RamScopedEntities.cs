@@ -4,17 +4,12 @@ using Apia;
 
 namespace Apia.Ram;
 
-internal sealed class RamScopedEntities<TResult> : IEntities<TResult>
+public sealed class RamScopedEntities<TResult>(
+    ConcurrentDictionary<Guid, Versioned<TResult>> store,
+    Func<TResult, Guid> idOf)
+    : IEntities<TResult>
 {
-    private readonly ConcurrentDictionary<Guid, Versioned<TResult>> store;
-    private readonly Func<TResult, Guid> idOf;
     private readonly ConcurrentDictionary<Guid, uint> loadedVersions = new();
-
-    internal RamScopedEntities(ConcurrentDictionary<Guid, Versioned<TResult>> store, Func<TResult, Guid> idOf)
-    {
-        this.store = store;
-        this.idOf  = idOf;
-    }
 
     public Task<OneOf<TResult, NotFound>> Load(Guid id)
     {

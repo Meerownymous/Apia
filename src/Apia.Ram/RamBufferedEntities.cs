@@ -3,25 +3,13 @@ using OneOf;
 
 namespace Apia.Ram;
 
-internal sealed class BufferedRamEntities<TRecord> : IEntities<TRecord>
+public sealed class BufferedRamEntities<TRecord>(
+    IEntities<TRecord> inner,
+    ConcurrentDictionary<(Type, Guid), object> buffer,
+    List<Func<Task>> operations,
+    object deletedMarker)
+    : IEntities<TRecord>
 {
-    private readonly IEntities<TRecord> inner;
-    private readonly ConcurrentDictionary<(Type, Guid), object> buffer;
-    private readonly List<Func<Task>> operations;
-    private readonly object deletedMarker;
-
-    internal BufferedRamEntities(
-        IEntities<TRecord> inner,
-        ConcurrentDictionary<(Type, Guid), object> buffer,
-        List<Func<Task>> operations,
-        object deletedMarker)
-    {
-        this.inner         = inner;
-        this.buffer        = buffer;
-        this.operations    = operations;
-        this.deletedMarker = deletedMarker;
-    }
-
     public async Task<OneOf<TRecord, NotFound>> Load(Guid id)
     {
         var found = buffer.TryGetValue((typeof(TRecord), id), out var buffered);

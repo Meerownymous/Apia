@@ -1,4 +1,3 @@
-using Apia;
 using OneOf;
 
 namespace Apia.Ram;
@@ -12,7 +11,7 @@ public sealed class RamVault<TResult> : IVault<TResult>
     private bool exists;
     private Versioned<TResult> versioned = default!;
     private uint loadedVersion;
-    private readonly object syncLock = new();
+    private readonly Lock syncLock = new();
 
     public Task<OneOf<TResult, NotFound>> Load()
     {

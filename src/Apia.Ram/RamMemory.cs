@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using Apia;
 
 namespace Apia.Ram;
 
@@ -19,32 +18,32 @@ public sealed class RamMemory : IMemory
         this.sources  = sources;
     }
 
-    public IEntities<TResult> Entities<TResult>()
+    public IEntities<TEntity> Entities<TEntity>() where TEntity : notnull
     {
-        if (!entities.TryGetValue(typeof(TResult), out var entry) || entry is not RamEntities<TResult> raw)
-            throw new InvalidOperationException($"No IEntities<{typeof(TResult).Name}> registered.");
+        if (!entities.TryGetValue(typeof(TEntity), out var entry) || entry is not RamEntities<TEntity> raw)
+            throw new InvalidOperationException($"No Entities<{typeof(TEntity).Name}> registered.");
         return raw.Scope();
     }
 
-    public IVault<TResult> Vault<TResult>()
+    public IVault<TContent> Vault<TContent>() where TContent : notnull
     {
-        if (!vaults.TryGetValue(typeof(TResult), out var vault))
-            throw new InvalidOperationException($"No IVault<{typeof(TResult).Name}> registered.");
-        return (IVault<TResult>)vault;
+        if (!vaults.TryGetValue(typeof(TContent), out var vault))
+            throw new InvalidOperationException($"No Vault<{typeof(TContent).Name}> registered.");
+        return (IVault<TContent>)vault;
     }
 
-    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViewStream<TResult, TSeed> ViewStream<TResult, TSeed>() where TSeed : notnull
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
-        return ((ISynopsisStream<TResult, TQuery, IMemory>)source).Build(this);
+        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
+        return ((ISynopsisStream<TResult, TSeed, IMemory>)source).Grow(this);
     }
 
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+    public IView<TResult, TSeed> View<TResult, TSeed>() where TSeed : notnull
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
-        return ((ISynopsis<TResult, TQuery, IMemory>)source).Build(this);
+        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
+        return ((ISynopsis<TResult, TSeed, IMemory>)source).Build(this);
     }
 
     public ITransaction Begin() => new RamTransaction(this);

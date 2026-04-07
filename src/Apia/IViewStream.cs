@@ -1,7 +1,6 @@
 namespace Apia;
 
-public interface IViewStream<out TResult, in TQuery> where TQuery : Query<TResult>
+public interface IViewStream<out TResult, in TSeed> where TSeed : notnull
 {
-    /// <summary>Execute the query and stream results.</summary>
-    IAsyncEnumerable<TResult> Query(TQuery query);
+    IAsyncEnumerable<TResult> Build(TSeed seed);
 }

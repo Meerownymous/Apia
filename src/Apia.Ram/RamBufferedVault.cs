@@ -3,22 +3,12 @@ using OneOf;
 
 namespace Apia.Ram;
 
-public sealed class BufferedRamVault<TResult> : IVault<TResult>
+public sealed class BufferedRamVault<TResult>(
+    RamVault<TResult> inner,
+    ConcurrentDictionary<Type, object> buffer,
+    List<Func<Task>> operations)
+    : IVault<TResult>
 {
-    private readonly RamVault<TResult> inner;
-    private readonly ConcurrentDictionary<Type, object> buffer;
-    private readonly List<Func<Task>> operations;
-
-    internal BufferedRamVault(
-        RamVault<TResult> inner,
-        ConcurrentDictionary<Type, object> buffer,
-        List<Func<Task>> operations)
-    {
-        this.inner      = inner;
-        this.buffer     = buffer;
-        this.operations = operations;
-    }
-
     public async Task<OneOf<TResult, NotFound>> Load()
     {
         var result = buffer.TryGetValue(typeof(TResult), out var buffered)

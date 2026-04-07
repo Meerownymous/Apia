@@ -24,11 +24,11 @@ public sealed class FileMemory : IMemory
 
     internal DirectoryInfo Directory => directory;
 
-    public IEntities<TResult> Entities<TResult>()
+    public IEntities<TEntity> Entities<TEntity>()
     {
-        if (!entities.TryGetValue(typeof(TResult), out var entry))
-            throw new InvalidOperationException($"No IEntities<{typeof(TResult).Name}> registered.");
-        return (IEntities<TResult>)entry;
+        if (!entities.TryGetValue(typeof(TEntity), out var entry))
+            throw new InvalidOperationException($"No IEntities<{typeof(TEntity).Name}> registered.");
+        return (IEntities<TEntity>)entry;
     }
 
     public IVault<TResult> Vault<TResult>()
@@ -38,18 +38,18 @@ public sealed class FileMemory : IMemory
         return (IVault<TResult>)vault;
     }
 
-    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViewStream<TResult, TSeed> ViewStream<TResult, TSeed>() where TSeed : notnull
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
-        return ((ISynopsisStream<TResult, TQuery, DirectoryInfo>)source).Build(directory);
+        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
+        return ((ISynopsisStream<TResult, TSeed, DirectoryInfo>)source).Grow(directory);
     }
 
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+    public IView<TResult, TSeed> View<TResult, TSeed>() where TSeed : notnull
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
-        return ((ISynopsis<TResult, TQuery, DirectoryInfo>)source).Build(directory);
+        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
+        return ((ISynopsis<TResult, TSeed, DirectoryInfo>)source).Build(directory);
     }
 
     public ITransaction Begin() => new FileTransaction(this);
@@ -68,11 +68,11 @@ public sealed class FileMemory : IMemory
         return v;
     }
     
-    internal ISynopsisStream<TResult, TQuery, DirectoryInfo> GetSource<TResult, TQuery>()
-        where TQuery : Query<TResult>
+    internal ISynopsisStream<TResult, TSeed, DirectoryInfo> GetSource<TResult, TSeed>()
+        where TSeed : notnull
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
-        return (ISynopsisStream<TResult, TQuery, DirectoryInfo>)source;
+        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
+        return (ISynopsisStream<TResult, TSeed, DirectoryInfo>)source;
     }
 }

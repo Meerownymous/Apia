@@ -40,7 +40,7 @@ public sealed class PostgresVault<TResult> : IVault<TResult> where TResult : not
             return OneOf<TResult, Conflict<TResult>>.FromT1(conflict);
         }
         session.Store(record);
-        session.Store(new ApiaVersion(VersionId, typeof(TResult).Name, SingletonId, currentVersion + 1));
+        session.Store(new ApiaVersion(typeof(TResult).Name, SingletonId, currentVersion + 1));
         return OneOf<TResult, Conflict<TResult>>.FromT0(record);
     }
 }

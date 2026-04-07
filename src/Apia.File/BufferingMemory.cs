@@ -17,10 +17,10 @@ public sealed class BufferingMemory : IMemory
     public IVault<TResult> Vault<TResult>()
         => new BufferingVault<TResult>(source.GetFileVault<TResult>(), operations);
 
-    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
-        => source.GetSource<TResult, TQuery>().Build(source.Directory);
+    public IViewStream<TResult, TSeed> ViewStream<TResult, TSeed>() where TSeed : notnull
+        => source.GetSource<TResult, TSeed>().Grow(source.Directory);
 
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+    public IView<TResult, TSeed> View<TResult, TSeed>() where TSeed : notnull
     //=> source.GetSource<TResult, TQuery>().Build(source.Directory);
         => throw new NotImplementedException();
         

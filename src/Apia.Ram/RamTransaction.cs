@@ -17,7 +17,7 @@ public sealed class RamTransaction : ITransaction
     private readonly ConcurrentDictionary<Type, object> vaultBuffer = new();
     private readonly RamTransactionMemory transactionMemory;
 
-    internal RamTransaction(RamMemory memory)
+    public RamTransaction(RamMemory memory)
     {
         transactionMemory = new RamTransactionMemory(memory, entitiesBuffer, vaultBuffer, operations, DeletedMarker);
     }

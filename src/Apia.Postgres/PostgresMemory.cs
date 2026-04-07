@@ -38,19 +38,19 @@ public sealed class PostgresMemory : IMemory
             : new PostgresVault<TResult>(store.LightweightSession());
     }
 
-    public IViewStream<TResult, TQuery> Views<TResult, TQuery>() where TQuery : Query<TResult>
+    public IViewStream<TResult, TSeed> ViewStream<TResult, TSeed>() where TSeed : notnull
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
-        return ((ISynopsisStream<TResult, TQuery, (IMemory, IDocumentSession)>)source)
-            .Build((this, store.LightweightSession()));
+        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
+        return ((ISynopsisStream<TResult, TSeed, (IMemory, IDocumentSession)>)source)
+            .Grow((this, store.LightweightSession()));
     }
 
-    public IView<TResult, TQuery> View<TResult, TQuery>() where TQuery : Query<TResult>
+    public IView<TResult, TSeed> View<TResult, TSeed>() where TSeed : notnull
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TQuery).Name}> registered.");
-        return ((ISynopsis<TResult, TQuery, (IMemory, IDocumentSession)>)source)
+        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
+        return ((ISynopsis<TResult, TSeed, (IMemory, IDocumentSession)>)source)
             .Build((this, store.LightweightSession()));   
     }
 
