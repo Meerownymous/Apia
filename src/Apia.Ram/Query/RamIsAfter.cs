@@ -1,8 +1,10 @@
 namespace Apia.Ram.Query;
 
-internal sealed class RamIsAfter<T>(IsAfterNode node) : IRamCondition<T>
+/// <summary>A condition that holds when a field's value is greater than a reference value.</summary>
+public sealed class RamIsAfter<T>(IsAfterNode node) : ICondition<T>
 {
-    private readonly RamField<T> field = new(node.Field);
+    private readonly IField<T> field = new RamField<T>(node.Field);
 
-    public bool Matches(T item) => Comparer<object?>.Default.Compare(field.Read(item), node.Value) > 0;
+    /// <inheritdoc/>
+    public bool Matches(T item) => Comparer<object?>.Default.Compare(field.Value(item), node.Value) > 0;
 }

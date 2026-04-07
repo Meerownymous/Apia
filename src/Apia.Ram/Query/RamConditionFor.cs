@@ -1,12 +1,14 @@
 namespace Apia.Ram.Query;
 
-public sealed class RamConditionFor<T> : IRamCondition<T>
+/// <summary>A condition built from a query condition node, dispatching to the appropriate implementation.</summary>
+public sealed class RamConditionFor<T> : ICondition<T>
 {
-    private readonly IRamCondition<T> inner;
+    private readonly ICondition<T> inner;
 
+    /// <summary>Creates the condition corresponding to the given node.</summary>
     public RamConditionFor(ConditionNode node)
     {
-        IRamCondition<T> raw = node switch
+        ICondition<T> raw = node switch
         {
             EqualsNode   eq => new RamEquals<T>(eq),
             IsAfterNode  a  => new RamIsAfter<T>(a),
@@ -17,5 +19,6 @@ public sealed class RamConditionFor<T> : IRamCondition<T>
         inner = node.Negated ? new RamNegated<T>(raw) : raw;
     }
 
+    /// <inheritdoc/>
     public bool Matches(T item) => inner.Matches(item);
 }

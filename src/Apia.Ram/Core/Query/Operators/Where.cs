@@ -4,6 +4,7 @@ namespace Apia;
 
 public static partial class QueryExtensions
 {
-    public static IConditionBuilder<T> Where<T, TField>(this Query<T> query, Expression<Func<T, TField>> expr)
-        => new ConditionBuilder<T>(query, Connector.None, FieldName(expr));
+    /// <summary>Begins a filter condition on the selected field.</summary>
+    public static IConditionBuilder<T> Where<T, TValue>(this Query<T> query, Expression<Func<T, TValue>> field)
+        => new ConditionBuilder<T>(query, Connector.None, ((MemberExpression)field.Body).Member.Name);
 }

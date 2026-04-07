@@ -1,4 +1,5 @@
 using Apia.Ram;
+using Apia.Ram.Tests.Examples.Record;
 using Apia.Tests.Record;
 using Xunit;
 

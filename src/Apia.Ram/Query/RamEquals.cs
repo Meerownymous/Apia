@@ -1,8 +1,10 @@
 namespace Apia.Ram.Query;
 
-public sealed class RamEquals<T>(EqualsNode node) : IRamCondition<T>
+/// <summary>A condition that holds when a field's value equals a reference value.</summary>
+public sealed class RamEquals<T>(EqualsNode node) : ICondition<T>
 {
-    private readonly RamField<T> field = new(node.Field);
+    private readonly IField<T> field = new RamField<T>(node.Field);
 
-    public bool Matches(T item) => Equals(field.Read(item), node.Value);
+    /// <inheritdoc/>
+    public bool Matches(T item) => Equals(field.Value(item), node.Value);
 }

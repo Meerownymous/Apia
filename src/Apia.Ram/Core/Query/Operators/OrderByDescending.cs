@@ -4,6 +4,7 @@ namespace Apia;
 
 public static partial class QueryExtensions
 {
-    public static Query<T> OrderByDescending<T, TKey>(this Query<T> query, Expression<Func<T, TKey>> expr)
-        => query.AppendOrder(new OrderNode(FieldName(expr), Descending: true));
+    /// <summary>Appends a descending sort on the selected field.</summary>
+    public static Query<T> OrderByDescending<T, TValue>(this Query<T> query, Expression<Func<T, TValue>> field)
+        => query.AppendOrder(new OrderNode(((MemberExpression)field.Body).Member.Name, Descending: true));
 }

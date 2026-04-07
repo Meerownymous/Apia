@@ -4,6 +4,7 @@ namespace Apia;
 
 public static partial class QueryExtensions
 {
-    public static IConditionBuilder<T> And<T, TField>(this Query<T> query, Expression<Func<T, TField>> expr)
-        => new ConditionBuilder<T>(query, Connector.And, FieldName(expr));
+    /// <summary>Adds an AND condition on the selected field.</summary>
+    public static IConditionBuilder<T> And<T, TValue>(this Query<T> query, Expression<Func<T, TValue>> field)
+        => new ConditionBuilder<T>(query, Connector.And, ((MemberExpression)field.Body).Member.Name);
 }
