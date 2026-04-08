@@ -3,6 +3,7 @@ using OneOf;
 
 namespace Apia.Ram;
 
+/// <summary>IEntities that buffers Save/Delete operations and defers them to transaction commit.</summary>
 public sealed class BufferedRamEntities<TRecord>(
     IEntities<TRecord> inner,
     ConcurrentDictionary<(Type, Guid), object> buffer,

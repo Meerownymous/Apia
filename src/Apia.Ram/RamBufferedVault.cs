@@ -3,8 +3,9 @@ using OneOf;
 
 namespace Apia.Ram;
 
+/// <summary>IVault that buffers Save operations and defers them to transaction commit.</summary>
 public sealed class BufferedRamVault<TResult>(
-    RamVault<TResult> inner,
+    IVault<TResult> inner,
     ConcurrentDictionary<Type, object> buffer,
     List<Func<Task>> operations)
     : IVault<TResult>

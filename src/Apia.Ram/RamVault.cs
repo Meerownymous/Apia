@@ -18,9 +18,9 @@ public sealed class RamVault<TResult> : IVault<TResult>
         lock (syncLock)
         {
             loadedVersion = exists ? versioned.Version : 0u;
-            var result = exists
-                ? OneOf<TResult, NotFound>.FromT0(versioned.Record)
-                : OneOf<TResult, NotFound>.FromT1(new NotFound());
+            OneOf<TResult, NotFound> result = exists
+                ? versioned.Record
+                : new NotFound();
             return Task.FromResult(result);
         }
     }

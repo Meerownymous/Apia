@@ -11,7 +11,7 @@ public sealed class BoundPostgresEntities<TRecord> : IEntities<TRecord> where TR
     private readonly Func<TRecord, Guid> idOf;
     private readonly ConcurrentDictionary<Guid, uint> loadedVersions = new();
 
-    internal BoundPostgresEntities(IDocumentSession session, Func<TRecord, Guid> idOf)
+    public BoundPostgresEntities(IDocumentSession session, Func<TRecord, Guid> idOf)
     {
         this.session = session;
         this.idOf    = idOf;

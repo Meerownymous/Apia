@@ -4,6 +4,7 @@ using Marten;
 
 namespace Apia.Postgres;
 
+/// <summary>A Postgres transaction backed by a Marten IDocumentSession. Commit() saves all pending changes.</summary>
 public sealed class PostgresTransaction(
     IDocumentSession session,
     ConcurrentDictionary<Type, object> entities,

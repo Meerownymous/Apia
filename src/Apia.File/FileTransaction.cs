@@ -1,17 +1,22 @@
+using System.Collections.Concurrent;
 using Apia;
-using OneOf;
 
 namespace Apia.File;
 
+/// <summary>A buffered file transaction. Saves and deletes are deferred; Commit() flushes them to disk.</summary>
 public sealed class FileTransaction : ITransaction
 {
     private readonly List<Func<Task>> operations = new();
     private volatile bool committed;
     private readonly BufferingMemory bufferingMemory;
 
-    internal FileTransaction(FileMemory source)
+    public FileTransaction(
+        DirectoryInfo directory,
+        ConcurrentDictionary<Type, object> entities,
+        ConcurrentDictionary<Type, object> vaults,
+        ConcurrentDictionary<(Type, Type), object> sources)
     {
-        bufferingMemory = new BufferingMemory(source, operations);
+        bufferingMemory = new BufferingMemory(directory, entities, vaults, sources, operations);
     }
 
     public IMemory Memory() => bufferingMemory;
@@ -30,6 +35,3 @@ public sealed class FileTransaction : ITransaction
         return ValueTask.CompletedTask;
     }
 }
-
-
-

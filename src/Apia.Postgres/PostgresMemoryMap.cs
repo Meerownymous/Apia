@@ -38,15 +38,16 @@ public sealed class PostgresMemoryMap : IMemoryMap
         });
     }
 
-    /// <summary>Register a PostgresEntities — e.g. new PostgresEntities&lt;PostRecord&gt;(p => p.PostId).</summary>
-    public void Register<TResult>(IEntities<TResult> e)
-        => entities[typeof(TResult)] = e;
+    /// <inheritdoc/>
+    public void Register<TResult>(IEntities<TResult> e) where TResult : notnull
+        => entities[typeof(TResult)] = (Func<IDocumentSession, IEntities<TResult>>)(
+            session => new BoundPostgresEntities<TResult>(session, e.IdOf));
 
-    /// <summary>Register a PostgresVault for a singleton-style record.</summary>
-    public void Register<TResult>(IVault<TResult> vault)
+    /// <inheritdoc/>
+    public void Register<TResult>(IVault<TResult> vault) where TResult : notnull
         => vaults[typeof(TResult)] = vault;
 
-    /// <summary>Register a synopsis source. TContext is (IMemory, IDocumentSession) for Postgres.</summary>
+    /// <summary>Register a synopsis source. Context provides IMemory and IDocumentSession at query time.</summary>
     public void Register<TResult, TQuery>(
         ISynopsisStream<TResult, TQuery, (IMemory Memory, IDocumentSession Session)> source)
         where TQuery : Query<TResult>

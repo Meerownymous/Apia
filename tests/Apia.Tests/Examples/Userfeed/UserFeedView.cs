@@ -4,7 +4,8 @@ using Tonga.Enumerable;
 
 namespace Apia.Tests.Examples.Userfeed;
 
-public sealed class UserFeedSynopsisStream() : RamSynopsisStream<UserPostSummaryView, UserFeedQuery>(Query)
+/// <summary>The synopsis stream for the user's personal feed, resolved from IMemory.</summary>
+public sealed class UserFeedView() : RamSynopsisStream<UserPostSummaryView, UserFeedQuery>(Query)
 {
     private static async IAsyncEnumerable<UserPostSummaryView> Query(IMemory memory, UserFeedQuery query)
     {

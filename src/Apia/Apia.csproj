@@ -12,9 +12,4 @@
       <PackageReference Include="Tonga" Version="0.19.0" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Postgres\" />
-      <Folder Include="Ram\" />
-    </ItemGroup>
-
 </Project>

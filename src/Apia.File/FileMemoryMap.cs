@@ -5,7 +5,7 @@ namespace Apia.File;
 
 /// <summary>
 /// Compose a file-backed IMemory. One JSON file per record type in the given directory.
-/// Synopsis sources receive DirectoryInfo as context.
+/// Synopsis sources receive IMemory as context — identical to the Ram convention.
 /// </summary>
 public sealed class FileMemoryMap(string directory) : IMemoryMap
 {
@@ -14,15 +14,15 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
     private readonly ConcurrentDictionary<(Type, Type), object> sources = new();
 
     /// <inheritdoc/>
-    public void Register<TResult>(IEntities<TResult> e)
+    public void Register<TResult>(IEntities<TResult> e) where TResult : notnull
         => entities[typeof(TResult)] = e;
 
     /// <inheritdoc/>
-    public void Register<TResult>(IVault<TResult> vault)
+    public void Register<TResult>(IVault<TResult> vault) where TResult : notnull
         => vaults[typeof(TResult)] = vault;
 
-    /// <summary>Register a synopsis source. TContext is DirectoryInfo for File.</summary>
-    public void Register<TResult, TQuery>(ISynopsisStream<TResult, TQuery, DirectoryInfo> source)
+    /// <summary>Register a synopsis source. Context is IMemory — the same interface used for Ram.</summary>
+    public void Register<TResult, TQuery>(ISynopsisStream<TResult, TQuery, IMemory> source)
         where TQuery : Query<TResult>
         => sources[(typeof(TResult), typeof(TQuery))] = source;
 

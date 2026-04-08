@@ -4,6 +4,7 @@ using Marten;
 
 namespace Apia.Postgres;
 
+/// <summary>Postgres-backed IMemory via a Marten IDocumentStore. Sessions are created per query.</summary>
 public sealed class PostgresMemory : IMemory
 {
     private readonly IDocumentStore store;
@@ -11,7 +12,7 @@ public sealed class PostgresMemory : IMemory
     private readonly ConcurrentDictionary<Type, object> vaults;
     private readonly ConcurrentDictionary<(Type, Type), object> sources;
 
-    internal PostgresMemory(
+    public PostgresMemory(
         IDocumentStore store,
         ConcurrentDictionary<Type, object> entities,
         ConcurrentDictionary<Type, object> vaults,
@@ -25,9 +26,10 @@ public sealed class PostgresMemory : IMemory
 
     public IEntities<TResult> Entities<TResult>() where TResult : notnull
     {
-        if (!entities.TryGetValue(typeof(TResult), out var entry) || entry is not PostgresEntities<TResult> pgEntities)
+        if (!entities.TryGetValue(typeof(TResult), out var entry) ||
+            entry is not Func<IDocumentSession, IEntities<TResult>> factory)
             throw new InvalidOperationException($"No PostgresEntities<{typeof(TResult).Name}> registered.");
-        return pgEntities.Bind(store.LightweightSession());
+        return factory(store.LightweightSession());
     }
 
     public IVault<TResult> Vault<TResult>() where TResult : notnull
@@ -42,7 +44,7 @@ public sealed class PostgresMemory : IMemory
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((ISynopsisStream<TResult, TSeed, (IMemory, IDocumentSession)>)source)
+        return ((ISynopsisStream<TResult, TSeed, (IMemory Memory, IDocumentSession Session)>)source)
             .Grow((this, store.LightweightSession()));
     }
 
@@ -50,8 +52,8 @@ public sealed class PostgresMemory : IMemory
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((ISynopsis<TResult, TSeed, (IMemory, IDocumentSession)>)source)
-            .Build((this, store.LightweightSession()));   
+        return ((ISynopsis<TResult, TSeed, (IMemory Memory, IDocumentSession Session)>)source)
+            .Build((this, store.LightweightSession()));
     }
 
     public ITransaction Begin()

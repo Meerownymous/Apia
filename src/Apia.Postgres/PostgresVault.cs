@@ -16,7 +16,7 @@ public sealed class PostgresVault<TResult> : IVault<TResult> where TResult : not
     private readonly IDocumentSession session;
     private uint loadedVersion;
 
-    internal PostgresVault(IDocumentSession session) => this.session = session;
+    public PostgresVault(IDocumentSession session) => this.session = session;
 
     public async Task<OneOf<TResult, NotFound>> Load()
     {

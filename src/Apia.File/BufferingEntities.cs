@@ -2,6 +2,7 @@ using OneOf;
 
 namespace Apia.File;
 
+/// <summary>IEntities that buffers Save/Delete operations and defers them to FileTransaction commit.</summary>
 public sealed class BufferingEntities<TRecord>(FileEntities<TRecord> inner, List<Func<Task>> operations)
     : IEntities<TRecord>
 {
@@ -12,7 +13,7 @@ public sealed class BufferingEntities<TRecord>(FileEntities<TRecord> inner, List
         operations.Add(async () =>
         {
             var result = await inner.Save(record);
-            if (result.IsT1)
+            if (result.Is<Conflict<TRecord>>())
                 throw new InvalidOperationException($"Conflict on flush: {typeof(TRecord).Name} was modified by another process.");
         });
         return Task.FromResult(OneOf<TRecord, Conflict<TRecord>>.FromT0(record));

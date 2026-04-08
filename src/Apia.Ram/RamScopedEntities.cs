@@ -4,6 +4,7 @@ using Apia;
 
 namespace Apia.Ram;
 
+/// <summary>A scoped view of a shared RAM entity store with per-caller version tracking for optimistic concurrency.</summary>
 public sealed class RamScopedEntities<TResult>(
     ConcurrentDictionary<Guid, Versioned<TResult>> store,
     Func<TResult, Guid> idOf)

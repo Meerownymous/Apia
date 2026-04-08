@@ -2,6 +2,7 @@ using OneOf;
 
 namespace Apia.File;
 
+/// <summary>IVault that buffers Save operations and defers them to FileTransaction commit.</summary>
 public sealed class BufferingVault<TResult>(FileVault<TResult> inner, List<Func<Task>> operations) : IVault<TResult>
 {
     public Task<OneOf<TResult, NotFound>> Load() => inner.Load();

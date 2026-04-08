@@ -5,18 +5,13 @@ using Apia;
 namespace Apia.Ram;
 
 /// <summary>
-/// In-memory catalog backed by ConcurrentDictionary.
+/// In-memory catalog backed by a ConcurrentDictionary.
 /// idOf: extracts the Guid key from a record — e.g. p => p.PostId.
-/// label: optional debug label, no effect on storage.
 /// </summary>
-public sealed class RamEntities<TResult>(Func<TResult, Guid> idOf, Func<TResult, string> label) : IEntities<TResult>
+public sealed class RamEntities<TResult>(Func<TResult, Guid> idOf) : IEntities<TResult>
 {
     private readonly ConcurrentDictionary<Guid, Versioned<TResult>> store = new();
     private readonly ConcurrentDictionary<Guid, uint> loadedVersions = new();
-
-    public RamEntities(Func<TResult, Guid> idOf)
-        : this(idOf, r => idOf(r).ToString())
-    { }
 
     public Task<OneOf<TResult, NotFound>> Load(Guid id)
     {
@@ -74,7 +69,6 @@ public sealed class RamEntities<TResult>(Func<TResult, Guid> idOf, Func<TResult,
             yield return await Task.FromResult(kv.Value.Record);
     }
 
-    internal string Label(TResult record) => label(record);
-
-    internal RamScopedEntities<TResult> Scope() => new(store, idOf);
+    /// <summary>The scoped view of this store with isolated per-caller version tracking.</summary>
+    public IEntities<TResult> Scoped() => new RamScopedEntities<TResult>(store, idOf);
 }

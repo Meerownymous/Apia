@@ -14,11 +14,11 @@ public sealed class RamMemoryMap : IMemoryMap
     private readonly ConcurrentDictionary<(Type, Type), object> sources = new();
 
     /// <inheritdoc/>
-    public void Register<TResult>(IEntities<TResult> e)
+    public void Register<TResult>(IEntities<TResult> e) where TResult : notnull
         => entities[typeof(TResult)] = e;
 
     /// <inheritdoc/>
-    public void Register<TResult>(IVault<TResult> vault)
+    public void Register<TResult>(IVault<TResult> vault) where TResult : notnull
         => vaults[typeof(TResult)] = vault;
 
     /// <summary>Register a synopsis source. TContext is IMemory for Ram.</summary>

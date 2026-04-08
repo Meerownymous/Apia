@@ -2,8 +2,11 @@ using System.Collections.Concurrent;
 
 namespace Apia.Ram;
 
+/// <summary>IMemory scoped to an active RamTransaction. Reads see buffered writes; commits flush to backing stores.</summary>
 public sealed class RamTransactionMemory(
-    RamMemory source,
+    ConcurrentDictionary<Type, object> entities,
+    ConcurrentDictionary<Type, object> vaults,
+    ConcurrentDictionary<(Type, Type), object> sources,
     ConcurrentDictionary<(Type, Guid), object> entitiesBuffer,
     ConcurrentDictionary<Type, object> vaultBuffer,
     List<Func<Task>> operations,
@@ -11,16 +14,32 @@ public sealed class RamTransactionMemory(
     : IMemory
 {
     public IEntities<TResult> Entities<TResult>() where TResult : notnull
-        => new BufferedRamEntities<TResult>(source.RawEntities<TResult>().Scope(), entitiesBuffer, operations, deletedMarker);
+    {
+        if (!entities.TryGetValue(typeof(TResult), out var entry) || entry is not RamEntities<TResult> raw)
+            throw new InvalidOperationException($"No Entities<{typeof(TResult).Name}> registered.");
+        return new BufferedRamEntities<TResult>(raw.Scoped(), entitiesBuffer, operations, deletedMarker);
+    }
 
     public IVault<TResult> Vault<TResult>() where TResult : notnull
-        => new BufferedRamVault<TResult>(source.RawVault<TResult>(), vaultBuffer, operations);
+    {
+        if (!vaults.TryGetValue(typeof(TResult), out var vault))
+            throw new InvalidOperationException($"No Vault<{typeof(TResult).Name}> registered.");
+        return new BufferedRamVault<TResult>((IVault<TResult>)vault, vaultBuffer, operations);
+    }
 
     public IViewStream<TResult, TSeed> ViewStream<TResult, TSeed>() where TSeed : notnull
-        => source.ViewStream<TResult, TSeed>();
+    {
+        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
+        return ((ISynopsisStream<TResult, TSeed, IMemory>)source).Grow(this);
+    }
 
     public IView<TResult, TSeed> View<TResult, TSeed>() where TSeed : notnull
-        => source.View<TResult, TSeed>();
+    {
+        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
+            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
+        return ((ISynopsis<TResult, TSeed, IMemory>)source).Build(this);
+    }
 
     public ITransaction Begin()
         => throw new InvalidOperationException("Cannot begin a nested transaction.");
