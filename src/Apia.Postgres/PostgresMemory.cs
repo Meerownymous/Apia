@@ -44,7 +44,7 @@ public sealed class PostgresMemory : IMemory
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((ISynopsisStream<TResult, TSeed, (IMemory Memory, IDocumentSession Session)>)source)
+        return ((IViewStreamOrigin<TResult, TSeed, (IMemory Memory, IDocumentSession Session)>)source)
             .Grow((this, store.LightweightSession()));
     }
 
@@ -52,8 +52,8 @@ public sealed class PostgresMemory : IMemory
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((ISynopsis<TResult, TSeed, (IMemory Memory, IDocumentSession Session)>)source)
-            .Build((this, store.LightweightSession()));
+        return ((IViewOrigin<TResult, TSeed, (IMemory Memory, IDocumentSession Session)>)source)
+            .Assemble((this, store.LightweightSession()));
     }
 
     public ITransaction Begin()

@@ -30,7 +30,7 @@ public sealed class UserFeedProjectionTests
         var feed = 
             await
                 memory.ViewStream<UserPostSummaryView, UserFeedQuery>()
-                    .Build(new(user1.UserId, Limit: 20))
+                    .Assemble(new(user1.UserId, Limit: 20))
                     .ToListAsync();
     }
 }

@@ -43,7 +43,7 @@ public sealed class BufferingMemory : IMemory
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((ISynopsisStream<TResult, TSeed, IMemory>)source).Grow(this);
+        return ((IViewStreamOrigin<TResult, TSeed, IMemory>)source).Grow(this);
     }
 
     public IView<TResult, TSeed> View<TResult, TSeed>() where TSeed : notnull

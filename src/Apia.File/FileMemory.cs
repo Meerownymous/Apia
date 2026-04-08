@@ -41,14 +41,14 @@ public sealed class FileMemory : IMemory
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((ISynopsisStream<TResult, TSeed, IMemory>)source).Grow(this);
+        return ((IViewStreamOrigin<TResult, TSeed, IMemory>)source).Grow(this);
     }
 
     public IView<TResult, TSeed> View<TResult, TSeed>() where TSeed : notnull
     {
         if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
             throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((ISynopsis<TResult, TSeed, IMemory>)source).Build(this);
+        return ((IViewOrigin<TResult, TSeed, IMemory>)source).Assemble(this);
     }
 
     public ITransaction Begin()

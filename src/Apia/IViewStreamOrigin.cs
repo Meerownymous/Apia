@@ -1,6 +1,6 @@
 namespace Apia;
 
-public interface ISynopsisStream<out TResult, in TSeed, in TContext> where TSeed : notnull
+public interface IViewStreamOrigin<out TResult, in TSeed, in TContext> where TSeed : notnull
 {
     /// <summary>
     /// Build a views projection bound to the given context.
