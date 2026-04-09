@@ -27,9 +27,9 @@ public sealed class PostgresMemory : IMemory
     public IEntities<TResult> Entities<TResult>() where TResult : notnull
     {
         if (!entities.TryGetValue(typeof(TResult), out var entry) ||
-            entry is not Func<IDocumentSession, IEntities<TResult>> factory)
+            entry is not Func<(IMemory Memory, IDocumentSession Session), IEntities<TResult>> factory)
             throw new InvalidOperationException($"No PostgresEntities<{typeof(TResult).Name}> registered.");
-        return factory(store.LightweightSession());
+        return factory((this, store.LightweightSession()));
     }
 
     public IVault<TResult> Vault<TResult>() where TResult : notnull

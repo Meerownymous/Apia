@@ -40,8 +40,14 @@ public sealed class PostgresMemoryMap : IMemoryMap
 
     /// <inheritdoc/>
     public void Register<TResult>(IEntities<TResult> e) where TResult : notnull
-        => entities[typeof(TResult)] = (Func<IDocumentSession, IEntities<TResult>>)(
-            session => new BoundPostgresEntities<TResult>(session, e.IdOf));
+        => entities[typeof(TResult)] =
+            (Func<(IMemory Memory, IDocumentSession Session), IEntities<TResult>>)(context => e);
+
+    /// <summary>Register a Postgres entity origin. Context provides IMemory and IDocumentSession at query time.</summary>
+    public void Register<TResult>(IEntitiesOrigin<TResult, (IMemory Memory, IDocumentSession Session)> origin)
+        where TResult : notnull
+        => entities[typeof(TResult)] =
+            (Func<(IMemory Memory, IDocumentSession Session), IEntities<TResult>>)(context => origin.Bind(context));
 
     /// <inheritdoc/>
     public void Register<TResult>(IVault<TResult> vault) where TResult : notnull
