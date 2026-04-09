@@ -26,6 +26,11 @@ public sealed class RamMemoryMap : IMemoryMap
         where TQuery : Query<TResult>
         => sources[(typeof(TResult), typeof(TQuery))] = source;
 
+    /// <summary>Register a synopsis source. TContext is IMemory for Ram.</summary>
+    public void Register<TResult, TQuery>(IViewOrigin<TResult, TQuery, IMemory> source)
+        where TQuery : Query<TResult>
+        => sources[(typeof(TResult), typeof(TQuery))] = source;
+
     /// <inheritdoc/>
     public IMemory Build() => new RamMemory(entities, vaults, sources);
 }

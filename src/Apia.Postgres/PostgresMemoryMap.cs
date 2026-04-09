@@ -54,13 +54,28 @@ public sealed class PostgresMemoryMap : IMemoryMap
         => sources[(typeof(TResult), typeof(TQuery))] = source;
 
     /// <summary>
-    /// Register a Postgres-specific synopsis as a backend override for a ShallowView.
+    /// Register a Postgres-specific synopsis as a backend override for a ShallowViewStream.
     /// TShallowView names the application-layer synopsis being overridden.
     /// </summary>
     public void Register<TShallowView, TResult, TQuery>(PostgresViewStream<TResult, TQuery> postgresViewStream)
         where TShallowView : ShallowViewStream<TResult, TQuery>
         where TQuery : Query<TResult>
         => sources[(typeof(TResult), typeof(TQuery))] = postgresViewStream;
+
+    /// <summary>Register a synopsis source. Context provides IMemory and IDocumentSession at query time.</summary>
+    public void Register<TResult, TQuery>(
+        IViewOrigin<TResult, TQuery, (IMemory Memory, IDocumentSession Session)> source)
+        where TQuery : Query<TResult>
+        => sources[(typeof(TResult), typeof(TQuery))] = source;
+
+    /// <summary>
+    /// Register a Postgres-specific synopsis as a backend override for a ShallowView.
+    /// TShallowView names the application-layer synopsis being overridden.
+    /// </summary>
+    public void Register<TShallowView, TResult, TQuery>(PostgresView<TResult, TQuery> postgresView)
+        where TShallowView : ShallowView<TResult, TQuery>
+        where TQuery : Query<TResult>
+        => sources[(typeof(TResult), typeof(TQuery))] = postgresView;
 
     /// <inheritdoc/>
     public IMemory Build() => new PostgresMemory(store, entities, vaults, sources);
