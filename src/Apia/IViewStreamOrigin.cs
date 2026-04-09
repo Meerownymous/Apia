@@ -7,5 +7,5 @@ public interface IViewStreamOrigin<out TResult, in TSeed, in TContext> where TSe
     /// TContext is injected by the memory at query time —
     /// Ram passes IMemory, File passes DirectoryInfo, Postgres passes (IMemory, IDocumentSession).
     /// </summary>
-    IViewStream<TResult, TSeed> Grow(TContext context);
+    IViewStream<TResult, TSeed> From(TContext context);
 }

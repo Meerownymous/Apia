@@ -10,7 +10,7 @@ public abstract class FileViewStreamOrigin<TResult, TSeed>(
     : IViewStreamOrigin<TResult, TSeed, (IMemory Memory, DirectoryInfo Directory)>
     where TSeed : notnull
 {
-    public IViewStream<TResult, TSeed> Grow((IMemory Memory, DirectoryInfo Directory) context)
+    public IViewStream<TResult, TSeed> From((IMemory Memory, DirectoryInfo Directory) context)
         => new BoundViewStream(context, query);
 
     /// <summary>A view stream bound to a specific IMemory and IDocumentSession.</summary>
@@ -19,7 +19,7 @@ public abstract class FileViewStreamOrigin<TResult, TSeed>(
         Func<IMemory, DirectoryInfo, TSeed, IAsyncEnumerable<TResult>> query)
         : IViewStream<TResult, TSeed>
     {
-        public IAsyncEnumerable<TResult> Assemble(TSeed seed)
+        public IAsyncEnumerable<TResult> From(TSeed seed)
             => query(context.Memory, context.directory, seed);
     }
 }

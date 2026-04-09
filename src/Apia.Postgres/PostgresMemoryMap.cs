@@ -53,6 +53,16 @@ public sealed class PostgresMemoryMap : IMemoryMap
         where TQuery : Query<TResult>
         => sources[(typeof(TResult), typeof(TQuery))] = source;
 
+    /// <summary>
+    /// Register a Postgres-specific synopsis as a backend override for a ShallowView.
+    /// TShallowView names the application-layer synopsis being overridden.
+    /// </summary>
+    public void Register<TShallowView, TResult, TQuery>(PostgresViewStream<TResult, TQuery> postgresViewStream)
+        where TShallowView : ShallowViewStream<TResult, TQuery>
+        where TQuery : Query<TResult>
+        => sources[(typeof(TResult), typeof(TQuery))] =
+            new PostgresViewStream<TResult, TQuery>.Adapter(postgresViewStream);
+
     /// <inheritdoc/>
     public IMemory Build() => new PostgresMemory(store, entities, vaults, sources);
 }

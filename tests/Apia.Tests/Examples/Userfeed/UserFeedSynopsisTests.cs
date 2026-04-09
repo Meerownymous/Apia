@@ -14,7 +14,6 @@ public sealed class UserFeedProjectionTests
         map.Register(new RamEntities<PostRecord>(p => p.PostId));
         map.Register(new RamEntities<CommentRecord>(c => c.CommentId));
         map.Register(new RamEntities<UserRecord>(u => u.UserId));
-        map.Register(new UserFeedView());
         var memory = map.Build();
 
         UserRecord user1 = new(Guid.NewGuid(), "Miro");
@@ -26,11 +25,14 @@ public sealed class UserFeedProjectionTests
         await memory.Entities<PostRecord>().Save(post);
         await memory.Entities<CommentRecord>().Save(comment);
 
-        // Im UseCase:
-        var feed = 
-            await
-                memory.ViewStream<UserPostSummaryView, UserFeedQuery>()
-                    .Assemble(new(user1.UserId, Limit: 20))
-                    .ToListAsync();
+        var feed =
+            await new UserFeedViewStream(memory)
+                .From(new(user1.UserId, Limit: 20))
+                .ToListAsync();
+
+        Assert.Single(feed);
+        Assert.Equal(post.PostId, feed[0].PostId);
+        Assert.Equal(user1.Username, feed[0].AuthorName);
+        Assert.Equal(1, feed[0].CommentCount);
     }
 }

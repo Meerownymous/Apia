@@ -27,20 +27,24 @@ public sealed class PostgresTransactionMemory(
             : new PostgresVault<TResult>(session);
     }
 
-    public IViewStream<TResult, TSeed> ViewStream<TResult, TSeed>() where TSeed : notnull
+    public OneOf.OneOf<IViewStream<TResult, TQuery>, NotFound> TryViewStream<TResult, TQuery>()
+        where TQuery : Query<TResult>
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((IViewStreamOrigin<TResult, TSeed, (IMemory Memory, IDocumentSession Session)>)source)
-            .Grow((this, session));
+        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
+            return OneOf.OneOf<IViewStream<TResult, TQuery>, NotFound>.FromT1(new NotFound());
+        return OneOf.OneOf<IViewStream<TResult, TQuery>, NotFound>.FromT0(
+            ((IViewStreamOrigin<TResult, TQuery, (IMemory Memory, IDocumentSession Session)>)source)
+                .From((this, session)));
     }
 
-    public IView<TResult, TSeed> View<TResult, TSeed>() where TSeed : notnull
+    public OneOf.OneOf<IView<TResult, TQuery>, NotFound> TryView<TResult, TQuery>()
+        where TQuery : Query<TResult>
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((IViewOrigin<TResult, TSeed, (IMemory Memory, IDocumentSession Session)>)source)
-            .Assemble((this, session));
+        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
+            return OneOf.OneOf<IView<TResult, TQuery>, NotFound>.FromT1(new NotFound());
+        return OneOf.OneOf<IView<TResult, TQuery>, NotFound>.FromT0(
+            ((IViewOrigin<TResult, TQuery, (IMemory Memory, IDocumentSession Session)>)source)
+                .Assemble((this, session)));
     }
 
     public ITransaction Begin()

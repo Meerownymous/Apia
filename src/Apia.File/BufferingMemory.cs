@@ -39,15 +39,18 @@ public sealed class BufferingMemory : IMemory
         return new BufferingVault<TResult>(fileVault, operations);
     }
 
-    public IViewStream<TResult, TSeed> ViewStream<TResult, TSeed>() where TSeed : notnull
+    public OneOf.OneOf<IViewStream<TResult, TQuery>, NotFound> TryViewStream<TResult, TQuery>()
+        where TQuery : Query<TResult>
     {
-        if (!sources.TryGetValue((typeof(TResult), typeof(TSeed)), out var source))
-            throw new InvalidOperationException($"No ISynopsis<{typeof(TResult).Name}, {typeof(TSeed).Name}> registered.");
-        return ((IViewStreamOrigin<TResult, TSeed, IMemory>)source).Grow(this);
+        if (!sources.TryGetValue((typeof(TResult), typeof(TQuery)), out var source))
+            return OneOf.OneOf<IViewStream<TResult, TQuery>, NotFound>.FromT1(new NotFound());
+        return OneOf.OneOf<IViewStream<TResult, TQuery>, NotFound>.FromT0(
+            ((IViewStreamOrigin<TResult, TQuery, IMemory>)source).From(this));
     }
 
-    public IView<TResult, TSeed> View<TResult, TSeed>() where TSeed : notnull
-        => throw new NotImplementedException();
+    public OneOf.OneOf<IView<TResult, TQuery>, NotFound> TryView<TResult, TQuery>()
+        where TQuery : Query<TResult>
+        => OneOf.OneOf<IView<TResult, TQuery>, NotFound>.FromT1(new NotFound());
 
     public ITransaction Begin()
         => throw new InvalidOperationException("Cannot begin a nested transaction.");

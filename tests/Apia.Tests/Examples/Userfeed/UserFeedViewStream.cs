@@ -1,13 +1,13 @@
-using Apia.Ram;
 using Apia.Tests.Record;
 using Tonga.Enumerable;
 
 namespace Apia.Tests.Examples.Userfeed;
 
-/// <summary>The synopsis stream for the user's personal feed, resolved from IMemory.</summary>
-public sealed class UserFeedView() : ShallowViewStreamOriginOrigin<UserPostSummaryView, UserFeedQuery>(Query)
+/// <summary>The user's personal feed — posts by the user, most recent first, with comment counts.</summary>
+public sealed class UserFeedViewStream(IMemory memory) : ShallowViewStream<UserPostSummaryView, UserFeedQuery>(memory)
 {
-    private static async IAsyncEnumerable<UserPostSummaryView> Query(IMemory memory, UserFeedQuery query)
+    protected override async IAsyncEnumerable<UserPostSummaryView> Query(
+        UserFeedQuery query, IMemory memory)
     {
         var posts    = memory.Entities<PostRecord>();
         var comments = memory.Entities<CommentRecord>();
