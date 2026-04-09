@@ -5,7 +5,8 @@
       "Read(//usr/local/share/dotnet/**)",
       "Read(//Users/meerow/.dotnet/**)",
       "Bash(/usr/local/share/dotnet/dotnet build:*)",
-      "Bash(/usr/local/share/dotnet/dotnet test:*)"
+      "Bash(/usr/local/share/dotnet/dotnet test:*)",
+      "Bash(~/.dotnet/dotnet build:*)"
     ]
   }
 }

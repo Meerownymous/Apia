@@ -60,8 +60,7 @@ public sealed class PostgresMemoryMap : IMemoryMap
     public void Register<TShallowView, TResult, TQuery>(PostgresViewStream<TResult, TQuery> postgresViewStream)
         where TShallowView : ShallowViewStream<TResult, TQuery>
         where TQuery : Query<TResult>
-        => sources[(typeof(TResult), typeof(TQuery))] =
-            new PostgresViewStream<TResult, TQuery>.Adapter(postgresViewStream);
+        => sources[(typeof(TResult), typeof(TQuery))] = postgresViewStream;
 
     /// <inheritdoc/>
     public IMemory Build() => new PostgresMemory(store, entities, vaults, sources);
