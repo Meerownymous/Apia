@@ -1,55 +1,60 @@
 namespace Apia.Scope;
 
 /// <summary>
-/// Decorator for single-result projections (<see cref="IView{TResult,TQuery}"/>).
-/// Applies the same two-strategy logic as <see cref="PolicyAwareViewStream{TResult,TQuery,TContext}"/>:
+/// An <see cref="IView{TResult,TQuery}"/> decorator that enforces access policy
+/// using one of two strategies, chosen automatically at execution time:
 ///
 /// <list type="number">
 ///   <item>
 ///     <term>Context injection (preferred)</term>
 ///     <description>
-///       When <typeparamref name="TQuery"/> implements <see cref="IScopedQuery{TContext}"/>,
-///       the context is injected and the synopsis handles policy enforcement natively.
+///       When the query implements <see cref="IScopedQuery{TContext}"/>, the active context
+///       is injected before forwarding to the inner view. The synopsis handles filtering natively.
 ///     </description>
 ///   </item>
 ///   <item>
 ///     <term>Post-check fallback</term>
 ///     <description>
-///       When <typeparamref name="TQuery"/> does not implement <see cref="IScopedQuery{TContext}"/>,
-///       the result is verified against the <c>canRead</c> predicate after execution.
+///       When the query does not implement <see cref="IScopedQuery{TContext}"/>, the result
+///       is verified against <see cref="IAccessPolicy{TRecord,TContext}.CanRead"/> after execution.
 ///       Throws <see cref="UnauthorizedAccessException"/> on denial.
 ///     </description>
 ///   </item>
 /// </list>
 /// </summary>
-internal sealed class PolicyAwareView<TResult, TQuery, TContext> : IView<TResult, TQuery>
+public sealed class PolicyAwareView<TResult, TQuery, TContext> : IView<TResult, TQuery>
     where TQuery : notnull
 {
     private readonly IView<TResult, TQuery> inner;
     private readonly TContext context;
-    private readonly Func<TResult, TContext, bool>? canRead;
-    private readonly bool injectContext;
+    private readonly IAccessPolicy<TResult, TContext> policy;
 
-    internal PolicyAwareView(
+    /// <summary>Wraps <paramref name="inner"/> with the given context and access policy.</summary>
+    public PolicyAwareView(
         IView<TResult, TQuery> inner,
         TContext context,
-        Func<TResult, TContext, bool>? canRead)
+        IAccessPolicy<TResult, TContext> policy)
     {
-        this.inner         = inner;
-        this.context       = context;
-        this.canRead       = canRead;
-        this.injectContext = typeof(IScopedQuery<TContext>).IsAssignableFrom(typeof(TQuery));
+        this.inner   = inner;
+        this.context = context;
+        this.policy  = policy;
     }
 
+    /// <summary>
+    /// Injects the context when the query is an <see cref="IScopedQuery{TContext}"/>;
+    /// otherwise executes and post-checks the result via the registered read predicate.
+    /// </summary>
     public async Task<TResult> Query(TQuery query)
     {
-        var effectiveQuery = injectContext
-            ? (TQuery)((IScopedQuery<TContext>)query).WithContext(context)
-            : query;
+        if (query is IScopedQuery<TContext> scoped)
+        {
+            var contextualQuery = (TQuery)scoped.WithContext(context);
+            return await inner.Query(contextualQuery);
+        }
 
-        var result = await inner.Query(effectiveQuery);
+        var result = await inner.Query(query);
 
-        if (!injectContext && canRead is not null && !canRead(result, context))
+        if (!policy.CanRead(result, context))
             throw new UnauthorizedAccessException(
                 $"Access denied: view result of type {typeof(TResult).Name} is not accessible in the current context.");
 

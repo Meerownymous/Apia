@@ -3,30 +3,26 @@ using OneOf;
 namespace Apia.Scope;
 
 /// <summary>
-/// The main decorator. Wraps any <see cref="IMemory"/> (RAM, File, Postgres, …) and
-/// enforces the access policies registered in <see cref="PolicyRegistry{TContext}"/>.
+/// An <see cref="IMemory"/> decorator that enforces the access policies registered in
+/// <see cref="IPolicies{TContext}"/> for the given context.
 ///
 /// <para>
 /// Record types that have no registered policy pass through to the inner backend unchanged,
-/// so global / shared data remains fully accessible via the same <see cref="IMemory"/>
+/// so global or shared data remains fully accessible via the same <see cref="IMemory"/>
 /// reference.
-/// </para>
-///
-/// <para>
-/// Do not instantiate directly — use
-/// <see cref="MemoryPolicyExtensions.WithPolicy{TContext}"/> instead.
 /// </para>
 /// </summary>
 public sealed class PolicyMemory<TContext> : IMemory
 {
     private readonly IMemory inner;
-    private readonly PolicyRegistry<TContext> registry;
+    private readonly IPolicies<TContext> policies;
     private readonly TContext context;
 
-    internal PolicyMemory(IMemory inner, PolicyRegistry<TContext> registry, TContext context)
+    /// <summary>Wraps <paramref name="inner"/> with the given policies and context.</summary>
+    public PolicyMemory(IMemory inner, IPolicies<TContext> policies, TContext context)
     {
         this.inner    = inner;
-        this.registry = registry;
+        this.policies = policies;
         this.context  = context;
     }
 
@@ -37,8 +33,8 @@ public sealed class PolicyMemory<TContext> : IMemory
     public IEntities<TResult> Entities<TResult>() where TResult : notnull
     {
         var entities = inner.Entities<TResult>();
-        return registry.HasPolicy<TResult>()
-            ? new PolicyEnforcedEntities<TResult, TContext>(entities, context, registry.PolicyFor<TResult>())
+        return policies.Has<TResult>()
+            ? new PolicyEnforcedEntities<TResult, TContext>(entities, context, policies.Of<TResult>())
             : entities;
     }
 
@@ -51,58 +47,63 @@ public sealed class PolicyMemory<TContext> : IMemory
         => inner.Vault<TResult>();
 
     /// <summary>
-    /// Returns a <see cref="PolicyAwareViewStream{TResult,TQuery,TContext}"/> when
-    /// the query supports context injection or a read predicate is registered.
-    /// Strategy selection (injection vs. post-filter) is determined at construction.
+    /// Returns a <see cref="PolicyAwareViewStream{TResult,TQuery,TContext}"/> when the query
+    /// supports context injection or a read predicate is registered; otherwise delegates directly.
     /// Returns <see cref="NotFound"/> when no stream is registered in the inner backend.
     /// </summary>
     public OneOf<IViewStream<TResult, TQuery>, NotFound> TryViewStream<TResult, TQuery>()
-        where TQuery : notnull
+        where TQuery : notnull, Query<TResult>
     {
         return inner.TryViewStream<TResult, TQuery>().Match<OneOf<IViewStream<TResult, TQuery>, NotFound>>(
             stream =>
             {
-                var injectContext = typeof(IScopedQuery<TContext>).IsAssignableFrom(typeof(TQuery));
-                var hasReadPolicy = registry.HasPolicy<TResult>();
+                var isScoped   = typeof(IScopedQuery<TContext>).IsAssignableFrom(typeof(TQuery));
+                var hasPolicy  = policies.Has<TResult>();
 
-                if (!injectContext && !hasReadPolicy)
-                    return stream;
+                if (!isScoped && !hasPolicy)
+                    return OneOf<IViewStream<TResult, TQuery>, NotFound>.FromT0(stream);
 
-                var canRead = hasReadPolicy ? registry.PolicyFor<TResult>().CanRead : null;
-                return new PolicyAwareViewStream<TResult, TQuery, TContext>(stream, context, canRead);
+                var policy = hasPolicy
+                    ? policies.Of<TResult>()
+                    : (IAccessPolicy<TResult, TContext>)new OpenAccessPolicy<TResult, TContext>();
+
+                return new PolicyAwareViewStream<TResult, TQuery, TContext>(stream, context, policy);
             },
             notFound => notFound
         );
     }
 
     /// <summary>
-    /// Returns a <see cref="PolicyAwareView{TResult,TQuery,TContext}"/> when
-    /// the query supports context injection or a read predicate is registered.
+    /// Returns a <see cref="PolicyAwareView{TResult,TQuery,TContext}"/> when the query
+    /// supports context injection or a read predicate is registered; otherwise delegates directly.
     /// Returns <see cref="NotFound"/> when no view is registered in the inner backend.
     /// </summary>
     public OneOf<IView<TResult, TQuery>, NotFound> TryView<TResult, TQuery>()
-        where TQuery : notnull
+        where TQuery : notnull, Query<TResult>
     {
         return inner.TryView<TResult, TQuery>().Match<OneOf<IView<TResult, TQuery>, NotFound>>(
             view =>
             {
-                var injectContext = typeof(IScopedQuery<TContext>).IsAssignableFrom(typeof(TQuery));
-                var hasReadPolicy = registry.HasPolicy<TResult>();
+                var isScoped  = typeof(IScopedQuery<TContext>).IsAssignableFrom(typeof(TQuery));
+                var hasPolicy = policies.Has<TResult>();
 
-                if (!injectContext && !hasReadPolicy)
-                    return view;
+                if (!isScoped && !hasPolicy)
+                    return OneOf<IView<TResult, TQuery>, NotFound>.FromT0(view);
 
-                var canRead = hasReadPolicy ? registry.PolicyFor<TResult>().CanRead : null;
-                return new PolicyAwareView<TResult, TQuery, TContext>(view, context, canRead);
+                var policy = hasPolicy
+                    ? policies.Of<TResult>()
+                    : (IAccessPolicy<TResult, TContext>)new OpenAccessPolicy<TResult, TContext>();
+
+                return new PolicyAwareView<TResult, TQuery, TContext>(view, context, policy);
             },
             notFound => notFound
         );
     }
 
     /// <summary>
-    /// Begins a transaction whose <see cref="ITransaction.Memory"/> is also
-    /// a <see cref="PolicyMemory{TContext}"/> — policies are never bypassed inside transactions.
+    /// Begins a transaction whose <see cref="ITransaction.Memory"/> is also a
+    /// <see cref="PolicyMemory{TContext}"/> — policies are never bypassed inside transactions.
     /// </summary>
     public ITransaction Begin()
-        => new PolicyEnforcedTransaction<TContext>(inner.Begin(), registry, context);
+        => new PolicyEnforcedTransaction<TContext>(inner.Begin(), policies, context);
 }
