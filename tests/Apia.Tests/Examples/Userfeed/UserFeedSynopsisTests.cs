@@ -16,8 +16,8 @@ public sealed class UserFeedProjectionTests
         map.Register(new RamEntities<UserRecord>(u => u.UserId));
         var memory = map.Build();
 
-        UserRecord user1 = new(Guid.NewGuid(), "Miro");
-        UserRecord user2 = new(Guid.NewGuid(), "Ralph");
+        UserRecord user1 = new("Miro");
+        UserRecord user2 = new("Ralph");
         PostRecord post = new(Guid.NewGuid(), user1.UserId, "Great Unittest discovered", LikeCount: 1, new HashSet<Guid>(), DateTime.Now);
         CommentRecord comment = new (Guid.NewGuid(), post.PostId, user2.UserId, "My cat's breath smells like cat food", DateTime.Now);
         await memory.Entities<UserRecord>().Save(user1);
