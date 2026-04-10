@@ -3,10 +3,10 @@ namespace Apia;
 public interface IMemoryMap
 {
     /// <summary>Register a catalog of records addressable by Guid.</summary>
-    void Register<TResult>(IEntities<TResult> entities);
+    void Register<TResult>(IEntities<TResult> entities) where TResult : notnull;
 
     /// <summary>Register a single record — settings, config, state.</summary>
-    void Register<TResult>(IVault<TResult> vault);
+    void Register<TResult>(IVault<TResult> vault) where TResult : notnull;
 
     /// <summary>Build the IMemory. Call after all registrations are done.</summary>
     IMemory Build();

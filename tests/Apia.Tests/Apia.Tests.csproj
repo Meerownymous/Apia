@@ -23,6 +23,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\src\Apia\Apia.csproj" />
+      <ProjectReference Include="..\..\src\Apia.Ram\Apia.Ram.csproj" />
     </ItemGroup>
 
 </Project>

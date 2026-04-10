@@ -1,7 +1,4 @@
 namespace Apia;
 
-/// <summary>
-/// Base type for all query descriptors.
-/// TResult is the projected return type — never instantiated directly.
-/// </summary>
-public abstract record Query<TResult>;
+/// <summary>Base record for all query descriptors. TResult is the projected return type.</summary>
+public abstract record Query<TResult> : IQuery<TResult>;

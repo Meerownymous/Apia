@@ -24,7 +24,7 @@ public sealed class RamMemoryMapTests
     {
         var map    = new RamMemoryMap();
         var user   = new UserRecord(Guid.NewGuid(), "Miro");
-        map.Register(new RamEntities<UserRecord>(u => u.UserId, u => u.Username));
+        map.Register(new RamEntities<UserRecord>(u => u.UserId));
         var memory = map.Build();
 
         await memory.Entities<UserRecord>().Save(user);
