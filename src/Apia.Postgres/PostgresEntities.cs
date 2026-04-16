@@ -55,7 +55,7 @@ public abstract class PostgresEntities<TRecord>
             if (currentVersion > 0 && currentVersion != expectedVersion)
             {
                 var current  = await session.LoadAsync<TRecord>(id);
-                var conflict = new Conflict<TRecord>(current!, record);
+                var conflict = new Conflict<TRecord>(current, record);
                 return OneOf<TRecord, Conflict<TRecord>>.FromT1(conflict);
             }
             session.Store(record);

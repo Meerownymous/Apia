@@ -1,36 +1,31 @@
-using Apia.Ram;
+using Apia.TestAssets.Assert;
 using Apia.Tests.Record;
 using Xunit;
 
-namespace Apia.Tests.Ram;
+namespace Apia.Ram.Tests;
 
 public sealed class RamEntitiesTests
 {
     [Fact]
     public async Task Load_ReturnsNotFound_WhenEmpty()
     {
-        var entities = new RamEntities<UserRecord>(u => u.UserId);
-
-        var result = await entities.Load(Guid.NewGuid());
-
-        Assert.True(result.IsT1);
+        AssertOneOf.Is<NotFound>(
+            await new RamEntities<UserRecord>(u => u.UserId)
+                .Load(Guid.NewGuid())
+        );
     }
 
     [Fact]
-    public async Task Load_ReturnsRecord_AfterSave()
+    public async Task LoadsRecord_AfterSave()
     {
         var entities = new RamEntities<UserRecord>(u => u.UserId);
         var user = new UserRecord(Guid.NewGuid(), "Miro");
         await entities.Save(user);
-
-        var result = await entities.Load(user.UserId);
-
-        Assert.True(result.IsT0);
-        Assert.Equal(user, result);
+        Assert.Equal(user, await entities.Load(user.UserId));
     }
 
     [Fact]
-    public async Task Save_ReturnsRecord_OnSuccess()
+    public async Task ReturnsRecord_OnSaveSuccess()
     {
         var entities = new RamEntities<UserRecord>(u => u.UserId);
         var user = new UserRecord(Guid.NewGuid(), "Miro");

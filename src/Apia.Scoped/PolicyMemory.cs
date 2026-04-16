@@ -34,7 +34,7 @@ public sealed class PolicyMemory<TContext> : IMemory
     {
         var entities = inner.Entities<TResult>();
         return policies.Has<TResult>()
-            ? new PolicyEnforcedEntities<TResult, TContext>(entities, context, policies.Of<TResult>())
+            ? new PolicyEntities<TResult, TContext>(entities, context, policies.Of<TResult>())
             : entities;
     }
 
@@ -47,7 +47,7 @@ public sealed class PolicyMemory<TContext> : IMemory
         => inner.Vault<TResult>();
 
     /// <summary>
-    /// Returns a <see cref="PolicyAwareViewStream{TResult,TQuery,TContext}"/> when the query
+    /// Returns a <see cref="PolicyViewStream{TResult,TQuery,TContext}"/> when the query
     /// supports context injection or a read predicate is registered; otherwise delegates directly.
     /// Returns <see cref="NotFound"/> when no stream is registered in the inner backend.
     /// </summary>
@@ -67,14 +67,14 @@ public sealed class PolicyMemory<TContext> : IMemory
                     ? policies.Of<TResult>()
                     : (IAccessPolicy<TResult, TContext>)new OpenAccessPolicy<TResult, TContext>();
 
-                return new PolicyAwareViewStream<TResult, TQuery, TContext>(stream, context, policy);
+                return new PolicyViewStream<TResult, TQuery, TContext>(stream, context, policy);
             },
             notFound => notFound
         );
     }
 
     /// <summary>
-    /// Returns a <see cref="PolicyAwareView{TResult,TQuery,TContext}"/> when the query
+    /// Returns a <see cref="PolicyView{TResult,TQuery,TContext}"/> when the query
     /// supports context injection or a read predicate is registered; otherwise delegates directly.
     /// Returns <see cref="NotFound"/> when no view is registered in the inner backend.
     /// </summary>
@@ -94,7 +94,7 @@ public sealed class PolicyMemory<TContext> : IMemory
                     ? policies.Of<TResult>()
                     : (IAccessPolicy<TResult, TContext>)new OpenAccessPolicy<TResult, TContext>();
 
-                return new PolicyAwareView<TResult, TQuery, TContext>(view, context, policy);
+                return new PolicyView<TResult, TQuery, TContext>(view, context, policy);
             },
             notFound => notFound
         );
@@ -105,5 +105,5 @@ public sealed class PolicyMemory<TContext> : IMemory
     /// <see cref="PolicyMemory{TContext}"/> — policies are never bypassed inside transactions.
     /// </summary>
     public ITransaction Begin()
-        => new PolicyEnforcedTransaction<TContext>(inner.Begin(), policies, context);
+        => new PolicyTransaction<TContext>(inner.Begin(), policies, context);
 }

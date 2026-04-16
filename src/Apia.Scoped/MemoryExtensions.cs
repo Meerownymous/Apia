@@ -1,10 +1,12 @@
-namespace Apia.Scope;
+using Apia.Scope;
+
+namespace Apia.Scoped;
 
 /// <summary>
 /// Extension method that wraps any <see cref="IMemory"/> with a
 /// <see cref="PolicyMemory{TContext}"/> configured via <see cref="IPolicies{TContext}"/>.
 /// </summary>
-public static class MemoryPolicyExtensions
+public static partial class MemoryExtensions
 {
     /// <summary>
     /// Returns a policy-enforced view of this memory for the given context.

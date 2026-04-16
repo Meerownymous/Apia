@@ -14,14 +14,14 @@ namespace Apia.Scope;
 ///     silently no-ops for genuinely missing records.</description></item>
 /// </list>
 /// </summary>
-public sealed class PolicyEnforcedEntities<TRecord, TContext> : IEntities<TRecord>
+public sealed class PolicyEntities<TRecord, TContext> : IEntities<TRecord>
 {
     private readonly IEntities<TRecord> inner;
     private readonly TContext context;
     private readonly IAccessPolicy<TRecord, TContext> policy;
 
     /// <summary>Wraps <paramref name="inner"/> with the given context and access policy.</summary>
-    public PolicyEnforcedEntities(
+    public PolicyEntities(
         IEntities<TRecord> inner,
         TContext context,
         IAccessPolicy<TRecord, TContext> policy)

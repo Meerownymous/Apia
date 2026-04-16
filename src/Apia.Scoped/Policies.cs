@@ -33,7 +33,7 @@ public sealed class Policies<TContext> : IPolicies<TContext>
         Func<TRecord, TContext, bool> write,
         Func<TRecord, TContext, bool> delete)
     {
-        store[typeof(TRecord)] = new AccessPolicy<TRecord, TContext>(read, write, delete);
+        store[typeof(TRecord)] = new AsAccessPolicy<TRecord, TContext>(read, write, delete);
         return this;
     }
 

@@ -8,8 +8,8 @@ public sealed class PostgresTransactionMemory(
     IDocumentSession session,
     ConcurrentDictionary<Type, object> entities,
     ConcurrentDictionary<Type, object> vaults,
-    ConcurrentDictionary<(Type, Type), object> sources)
-    : IMemory
+    ConcurrentDictionary<(Type, Type), object> sources
+) : IMemory
 {
     public IEntities<TResult> Entities<TResult>() where TResult : notnull
     {

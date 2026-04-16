@@ -23,7 +23,7 @@ namespace Apia.Scope;
 ///   </item>
 /// </list>
 /// </summary>
-public sealed class PolicyAwareViewStream<TResult, TQuery, TContext> : IViewStream<TResult, TQuery>
+public sealed class PolicyViewStream<TResult, TQuery, TContext> : IViewStream<TResult, TQuery>
     where TQuery : notnull
 {
     private readonly IViewStream<TResult, TQuery> inner;
@@ -31,7 +31,7 @@ public sealed class PolicyAwareViewStream<TResult, TQuery, TContext> : IViewStre
     private readonly IAccessPolicy<TResult, TContext> policy;
 
     /// <summary>Wraps <paramref name="inner"/> with the given context and access policy.</summary>
-    public PolicyAwareViewStream(
+    public PolicyViewStream(
         IViewStream<TResult, TQuery> inner,
         TContext context,
         IAccessPolicy<TResult, TContext> policy)
@@ -54,7 +54,7 @@ public sealed class PolicyAwareViewStream<TResult, TQuery, TContext> : IViewStre
                 yield return result;
         }
         else
-        {
+        { 
             await foreach (var result in inner.From(seed))
                 if (policy.CanRead(result, context))
                     yield return result;

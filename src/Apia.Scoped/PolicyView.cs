@@ -22,7 +22,7 @@ namespace Apia.Scope;
 ///   </item>
 /// </list>
 /// </summary>
-public sealed class PolicyAwareView<TResult, TQuery, TContext> : IView<TResult, TQuery>
+public sealed class PolicyView<TResult, TQuery, TContext> : IView<TResult, TQuery>
     where TQuery : notnull
 {
     private readonly IView<TResult, TQuery> inner;
@@ -30,7 +30,7 @@ public sealed class PolicyAwareView<TResult, TQuery, TContext> : IView<TResult, 
     private readonly IAccessPolicy<TResult, TContext> policy;
 
     /// <summary>Wraps <paramref name="inner"/> with the given context and access policy.</summary>
-    public PolicyAwareView(
+    public PolicyView(
         IView<TResult, TQuery> inner,
         TContext context,
         IAccessPolicy<TResult, TContext> policy)
