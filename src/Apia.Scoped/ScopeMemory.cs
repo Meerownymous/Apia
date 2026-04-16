@@ -1,6 +1,7 @@
+using Apia.Scope;
 using OneOf;
 
-namespace Apia.Scope;
+namespace Apia.Scoped;
 
 /// <summary>
 /// Decorator that applies registered <see cref="IEntitiesScope{TRecord,TFilter}"/> objects

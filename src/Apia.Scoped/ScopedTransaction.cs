@@ -1,4 +1,6 @@
-namespace Apia.Scope;
+using Apia.Scope;
+
+namespace Apia.Scoped;
 
 /// <summary>
 /// Wraps an <see cref="ITransaction"/> so the transactional memory returned by

@@ -1,4 +1,6 @@
-namespace Apia.Scope;
+using Apia.Scope;
+
+namespace Apia.Scoped;
 
 /// <summary>
 /// Collects <see cref="IEntitiesScope{TRecord,TFilter}"/> registrations for a specific

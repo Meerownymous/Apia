@@ -1,4 +1,6 @@
-namespace Apia.Scope;
+using Apia.Scope;
+
+namespace Apia.Scoped;
 
 /// <summary>
 /// Extension that activates registered <see cref="IEntitiesScope{TRecord,TFilter}"/> objects
