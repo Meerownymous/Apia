@@ -4,29 +4,41 @@ using Marten;
 
 namespace Apia.Postgres;
 
-/// <summary>Postgres-backed IMemory via a Marten IDocumentStore. Sessions are created per access.</summary>
-public sealed class PostgresMemory(
-    IDocumentStore store,
+/// <summary>
+/// Postgres unit of work. Save/Delete stage into the Marten session; Commit flushes via SaveChangesAsync.
+/// </summary>
+public sealed class PostgresBranch(
+    IDocumentSession session,
+    IMemory memory,
     ConcurrentDictionary<Type, object> aggregateRegistries,
     ConcurrentDictionary<Type, object> projectionRegistries)
-    : IMemory
+    : IBranch
 {
     public IAggregateSource<T> Aggregate<T>()
         => new PostgresAggregateSource<T>(
             Registry<T, PostgresAggregateRegistry<T>>(aggregateRegistries).Handlers(),
-            this,
-            store.QuerySession());
+            memory,
+            session);
 
     public IProjectionSource<T> Projection<T>()
         => new PostgresProjectionSource<T>(
             Registry<T, PostgresProjectionRegistry<T>>(projectionRegistries).Handlers(),
-            this,
-            store.QuerySession());
+            memory,
+            session);
 
-    public IVault<T> Vault<T>() => new PostgresVault<T>(store);
+    public Task Save<T>(T entity)
+    {
+        session.Store(entity);
+        return Task.CompletedTask;
+    }
 
-    public IBranch Branch()
-        => new PostgresBranch(store.LightweightSession(), this, aggregateRegistries, projectionRegistries);
+    public Task Delete<T>(Guid id)
+    {
+        session.Delete<T>(id);
+        return Task.CompletedTask;
+    }
+
+    public Task Commit() => session.SaveChangesAsync();
 
     private static TRegistry Registry<T, TRegistry>(ConcurrentDictionary<Type, object> registries)
         where TRegistry : new()

@@ -1,5 +1,3 @@
-using Spectre.Console.Rendering;
-
 namespace Apia.Tests.Record;
 
 // Domain/Records/UserRecord.cs

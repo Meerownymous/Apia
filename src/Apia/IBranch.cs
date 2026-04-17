@@ -1,9 +1,12 @@
 namespace Apia;
 
-public interface IMemory
+public interface IBranch
 {
     IAggregateSource<T> Aggregate<T>();
     IProjectionSource<T> Projection<T>();
-    IVault<T> Vault<T>();
-    IBranch Branch();
+
+    Task Save<T>(T entity);
+    Task Delete<T>(Guid id);
+
+    Task Commit();
 }

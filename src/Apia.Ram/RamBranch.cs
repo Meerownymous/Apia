@@ -1,15 +1,19 @@
 using System.Collections.Concurrent;
 using Apia;
 
-namespace Apia.File;
+namespace Apia.Ram;
 
-/// <summary>File-backed IMemory. Stores records as JSON files on disk, one file per entity type.</summary>
-public sealed class FileMemory(
+/// <summary>
+/// In-memory unit of work. Save/Delete stage operations; Commit flushes them to the stores.
+/// </summary>
+public sealed class RamBranch(
     ConcurrentDictionary<Type, object> stores,
     ConcurrentDictionary<Type, object> aggregateSources,
     ConcurrentDictionary<Type, object> projectionSources)
-    : IMemory
+    : IBranch
 {
+    private readonly List<Action> staged = new();
+
     public IAggregateSource<T> Aggregate<T>()
         => aggregateSources.TryGetValue(typeof(T), out var src)
             ? (IAggregateSource<T>)src
@@ -20,10 +24,28 @@ public sealed class FileMemory(
             ? (IProjectionSource<T>)src
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
-    public IVault<T> Vault<T>()
-        => stores.TryGetValue(typeof(T), out var store)
-            ? new FileVault<T>((FileEntityStore<T>)store)
-            : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
+    public Task Save<T>(T entity)
+    {
+        staged.Add(() => Store<T>().Set(entity));
+        return Task.CompletedTask;
+    }
 
-    public IBranch Branch() => new FileBranch(stores, aggregateSources, projectionSources);
+    public Task Delete<T>(Guid id)
+    {
+        staged.Add(() => Store<T>().Remove(id));
+        return Task.CompletedTask;
+    }
+
+    public Task Commit()
+    {
+        foreach (var op in staged)
+            op();
+        staged.Clear();
+        return Task.CompletedTask;
+    }
+
+    private RamEntityStore<T> Store<T>()
+        => stores.TryGetValue(typeof(T), out var store)
+            ? (RamEntityStore<T>)store
+            : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 }
