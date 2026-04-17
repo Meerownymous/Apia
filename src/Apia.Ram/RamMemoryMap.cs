@@ -17,16 +17,16 @@ public sealed class RamMemoryMap : IMemoryMap
         projectionRegistries.TryAdd(typeof(T), new ProjectionRegistry<T>());
     }
 
-    public void RegisterQuery<T, TQuery>(Func<TQuery, IMemory, IAsyncEnumerable<T>> handler) where T : notnull
+    public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull
     {
         var registry = (AggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new AggregateRegistry<T>());
-        registry.Register<TQuery>(handler);
+        registry.Register<TQuery>((q, m) => source.From(q, m));
     }
 
-    public void RegisterProjection<T, TQuery>(Func<TQuery, IMemory, Task<T>> handler) where T : notnull
+    public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
     {
         var registry = (ProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new ProjectionRegistry<T>());
-        registry.Register<TQuery>(handler);
+        registry.Register<TQuery>((q, m) => source.From(q, m));
     }
 
     public IMemory Build()

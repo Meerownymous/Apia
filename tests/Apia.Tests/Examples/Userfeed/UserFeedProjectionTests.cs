@@ -13,6 +13,7 @@ public sealed class UserFeedProjectionTests
         map.RegisterStore<UserRecord>(u => u.UserId);
         map.RegisterStore<PostRecord>(p => p.PostId);
         map.RegisterStore<CommentRecord>(c => c.CommentId);
+        map.RegisterQuery(new UserFeedProjection());
         var memory = map.Build();
 
         var user1   = new UserRecord("Miro");
@@ -35,7 +36,7 @@ public sealed class UserFeedProjectionTests
     {
         var (memory, _, user1) = await BuildFeedMemory();
 
-        var feed = await new UserFeedProjection(memory)
+        var feed = await memory.Aggregate<UserPostSummaryView>()
             .From(new UserFeedQuery(user1.UserId, Limit: 20))
             .ToListAsync();
 
@@ -47,7 +48,7 @@ public sealed class UserFeedProjectionTests
     {
         var (memory, post, user1) = await BuildFeedMemory();
 
-        var feed = await new UserFeedProjection(memory)
+        var feed = await memory.Aggregate<UserPostSummaryView>()
             .From(new UserFeedQuery(user1.UserId, Limit: 20))
             .ToListAsync();
 
@@ -59,7 +60,7 @@ public sealed class UserFeedProjectionTests
     {
         var (memory, _, user1) = await BuildFeedMemory();
 
-        var feed = await new UserFeedProjection(memory)
+        var feed = await memory.Aggregate<UserPostSummaryView>()
             .From(new UserFeedQuery(user1.UserId, Limit: 20))
             .ToListAsync();
 
@@ -71,7 +72,7 @@ public sealed class UserFeedProjectionTests
     {
         var (memory, _, user1) = await BuildFeedMemory();
 
-        var feed = await new UserFeedProjection(memory)
+        var feed = await memory.Aggregate<UserPostSummaryView>()
             .From(new UserFeedQuery(user1.UserId, Limit: 20))
             .ToListAsync();
 
@@ -85,6 +86,7 @@ public sealed class UserFeedProjectionTests
         map.RegisterStore<UserRecord>(u => u.UserId);
         map.RegisterStore<PostRecord>(p => p.PostId);
         map.RegisterStore<CommentRecord>(c => c.CommentId);
+        map.RegisterQuery(new UserFeedProjection());
         var memory = map.Build();
 
         var user   = new UserRecord("Miro");
@@ -92,7 +94,7 @@ public sealed class UserFeedProjectionTests
         await branch.Save(user);
         await branch.Commit();
 
-        var feed = await new UserFeedProjection(memory)
+        var feed = await memory.Aggregate<UserPostSummaryView>()
             .From(new UserFeedQuery(user.UserId, Limit: 20))
             .ToListAsync();
 
@@ -106,9 +108,10 @@ public sealed class UserFeedProjectionTests
         map.RegisterStore<UserRecord>(u => u.UserId);
         map.RegisterStore<PostRecord>(p => p.PostId);
         map.RegisterStore<CommentRecord>(c => c.CommentId);
+        map.RegisterQuery(new UserFeedProjection());
         var memory = map.Build();
 
-        var feed = await new UserFeedProjection(memory)
+        var feed = await memory.Aggregate<UserPostSummaryView>()
             .From(new UserFeedQuery(Guid.NewGuid(), Limit: 20))
             .ToListAsync();
 

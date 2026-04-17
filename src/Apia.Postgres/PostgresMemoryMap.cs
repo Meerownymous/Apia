@@ -7,7 +7,7 @@ namespace Apia.Postgres;
 
 /// <summary>
 /// Compose a Postgres-backed IMemory via Marten.
-/// Register stores and handlers, then call Build().
+/// Register stores and sources, then call Build().
 /// </summary>
 public sealed class PostgresMemoryMap : IMemoryMap
 {
@@ -34,30 +34,28 @@ public sealed class PostgresMemoryMap : IMemoryMap
         projectionRegistries.TryAdd(typeof(T), new PostgresProjectionRegistry<T>());
     }
 
-    public void RegisterQuery<T, TQuery>(Func<TQuery, IMemory, IAsyncEnumerable<T>> handler) where T : notnull
+    public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull
     {
         var reg = (PostgresAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
-        reg.Register<TQuery>((q, m, _) => handler(q, m));
+        reg.Register<TQuery>((q, m, _) => source.From(q, m));
     }
 
-    /// <summary>Register a Postgres-specific aggregate query with full session access.</summary>
-    public void RegisterQuery<T, TQuery>(Func<TQuery, IMemory, IDocumentSession, IAsyncEnumerable<T>> handler) where T : notnull
+    public void RegisterQuery<T, TQuery>(IPostgresAggregateSource<T, TQuery> source) where T : notnull
     {
         var reg = (PostgresAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
-        reg.Register<TQuery>(handler);
+        reg.Register<TQuery>((q, m, s) => source.From(q, m, s));
     }
 
-    public void RegisterProjection<T, TQuery>(Func<TQuery, IMemory, Task<T>> handler) where T : notnull
+    public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
     {
         var reg = (PostgresProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
-        reg.Register<TQuery>((q, m, _) => handler(q, m));
+        reg.Register<TQuery>((q, m, _) => source.From(q, m));
     }
 
-    /// <summary>Register a Postgres-specific projection query with full session access.</summary>
-    public void RegisterProjection<T, TQuery>(Func<TQuery, IMemory, IDocumentSession, Task<T>> handler) where T : notnull
+    public void RegisterProjection<T, TQuery>(IPostgresProjectionSource<T, TQuery> source) where T : notnull
     {
         var reg = (PostgresProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
-        reg.Register<TQuery>(handler);
+        reg.Register<TQuery>((q, m, s) => source.From(q, m, s));
     }
 
     public IMemory Build() => new PostgresMemory(store, aggregateRegistries, projectionRegistries);

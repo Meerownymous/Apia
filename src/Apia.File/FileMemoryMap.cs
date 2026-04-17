@@ -17,16 +17,16 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
         projectionRegistries.TryAdd(typeof(T), new FileProjectionRegistry<T>());
     }
 
-    public void RegisterQuery<T, TQuery>(Func<TQuery, IMemory, IAsyncEnumerable<T>> handler) where T : notnull
+    public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull
     {
         var reg = (FileAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new FileAggregateRegistry<T>());
-        reg.Register<TQuery>(handler);
+        reg.Register<TQuery>((q, m) => source.From(q, m));
     }
 
-    public void RegisterProjection<T, TQuery>(Func<TQuery, IMemory, Task<T>> handler) where T : notnull
+    public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
     {
         var reg = (FileProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new FileProjectionRegistry<T>());
-        reg.Register<TQuery>(handler);
+        reg.Register<TQuery>((q, m) => source.From(q, m));
     }
 
     public IMemory Build()

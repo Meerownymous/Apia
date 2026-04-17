@@ -4,17 +4,9 @@ using Apia.Tests.Record;
 namespace Apia.Tests.Examples.Userfeed;
 
 /// <summary>The user's personal feed — posts by the user, most recent first, with comment counts.</summary>
-public sealed class UserFeedProjection(IMemory memory) : IAggregateSource<UserPostSummaryView>
+public sealed class UserFeedProjection : IAggregateSource<UserPostSummaryView, UserFeedQuery>
 {
-    public IAsyncEnumerable<UserPostSummaryView> From<TQuery>(TQuery query)
-    {
-        if (query is UserFeedQuery feed)
-            return Execute(feed);
-
-        throw new InvalidOperationException($"Unsupported query: {typeof(TQuery).Name}");
-    }
-
-    private async IAsyncEnumerable<UserPostSummaryView> Execute(UserFeedQuery query)
+    public async IAsyncEnumerable<UserPostSummaryView> From(UserFeedQuery query, IMemory memory)
     {
         var posts    = memory.Aggregate<PostRecord>();
         var comments = memory.Aggregate<CommentRecord>();

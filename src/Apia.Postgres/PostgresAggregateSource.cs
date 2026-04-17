@@ -4,6 +4,11 @@ using Marten;
 
 namespace Apia.Postgres;
 
+public interface IPostgresAggregateSource<T, TQuery>
+{
+    IAsyncEnumerable<T> From(TQuery query, IMemory memory, IDocumentSession session);
+}
+
 /// <summary>Dispatches From&lt;TQuery&gt; to registered handlers or falls back to a full table scan for AllOf&lt;T&gt;.</summary>
 public sealed class PostgresAggregateSource<T>(
     ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> handlers,
