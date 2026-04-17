@@ -4,18 +4,22 @@ using Apia;
 namespace Apia.Ram;
 
 /// <summary>
-/// Dispatches <c>From&lt;TQuery&gt;</c> to registered handlers. Always handles
-/// <see cref="AllOf{T}"/> by streaming every entity in the store.
+/// Dispatches <c>From&lt;TQuery&gt;</c> to registered handlers.
+/// Vault types pass a non-null store to support <see cref="AllOf{T}"/>;
+/// aggregate types pass null and only support registered query handlers.
 /// </summary>
 public sealed class RamAggregateSource<T>(
-    RamEntityStore<T> store,
+    RamEntityStore<T>? store,
     ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> handlers,
     IMemory memory)
     : IAggregateSource<T>
 {
     public IAsyncEnumerable<T> From<TQuery>(TQuery query)
         => query is AllOf<T>
-            ? All()
+            ? store != null
+                ? All()
+                : throw new InvalidOperationException(
+                    $"{typeof(T).Name} is an aggregate type and does not support AllOf.")
             : handlers.TryGetValue(typeof(TQuery), out var handler)
                 ? handler(query!, memory)
                 : throw new InvalidOperationException(
@@ -23,7 +27,7 @@ public sealed class RamAggregateSource<T>(
 
     private async IAsyncEnumerable<T> All()
     {
-        foreach (var entity in store.All())
+        foreach (var entity in store!.All())
             yield return await Task.FromResult(entity);
     }
 }

@@ -11,6 +11,7 @@ namespace Apia.Postgres;
 /// </summary>
 public sealed class PostgresMemoryMap : IMemoryMap
 {
+    private readonly TypeRoleRegistry roles = new();
     private readonly IDocumentStore store;
     private readonly ConcurrentDictionary<Type, object> aggregateRegistries  = new();
     private readonly ConcurrentDictionary<Type, object> projectionRegistries = new();
@@ -30,30 +31,34 @@ public sealed class PostgresMemoryMap : IMemoryMap
 
     public void RegisterStore<T>(IIdentity<T> identity) where T : notnull
     {
+        roles.ClaimVault<T>();
         aggregateRegistries.TryAdd(typeof(T), new PostgresAggregateRegistry<T>());
-        projectionRegistries.TryAdd(typeof(T), new PostgresProjectionRegistry<T>());
     }
 
     public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull
     {
+        roles.ClaimAggregate<T>();
         var reg = (PostgresAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
         reg.Register<TQuery>((q, m, _) => source.From(q, m));
     }
 
     public void RegisterQuery<T, TQuery>(IPostgresAggregateSource<T, TQuery> source) where T : notnull
     {
+        roles.ClaimAggregate<T>();
         var reg = (PostgresAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
         reg.Register<TQuery>((q, m, s) => source.From(q, m, s));
     }
 
     public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
     {
+        roles.ClaimProjection<T>();
         var reg = (PostgresProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
         reg.Register<TQuery>((q, m, _) => source.From(q, m));
     }
 
     public void RegisterProjection<T, TQuery>(IPostgresProjectionSource<T, TQuery> source) where T : notnull
     {
+        roles.ClaimProjection<T>();
         var reg = (PostgresProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
         reg.Register<TQuery>((q, m, s) => source.From(q, m, s));
     }
