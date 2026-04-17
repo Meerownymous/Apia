@@ -3,7 +3,7 @@ using Apia;
 
 namespace Apia.File;
 
-/// <summary>Compose a file-backed IMemory. Each type is registered as exactly one of: vault, aggregate, or projection.</summary>
+/// <summary>Compose a file-backed IMemory. A type may be registered as vault, aggregate, and/or projection; only vault types are writable via IBranch.</summary>
 public sealed class FileMemoryMap(string directory) : IMemoryMap
 {
     private readonly ConcurrentDictionary<Type, object> stores              = new();
@@ -13,28 +13,30 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
 
     public void RegisterStore<T>(IIdentity<T> identity) where T : notnull
     {
-        GuardRole<T>("vault");
         var store = new FileEntityStore<T>(directory, identity);
         stores[typeof(T)] = store;
         buildSteps.Add((memory, aggSources, _) =>
-            aggSources[typeof(T)] = new FileAggregateSource<T>(store, new(), memory));
+        {
+            var queries = aggregateQueryMaps.TryGetValue(typeof(T), out var q)
+                ? (ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>)q
+                : new ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>();
+            aggSources[typeof(T)] = new FileAggregateSource<T>(store, queries, memory);
+        });
     }
 
     public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull
     {
-        GuardRole<T>("aggregate");
         var queries = (ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>)
             aggregateQueryMaps.GetOrAdd(typeof(T), _ => new ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>());
         var first = queries.IsEmpty;
         queries[typeof(TQuery)] = (q, m) => source.From((TQuery)q, m);
-        if (first)
+        if (first && !stores.ContainsKey(typeof(T)))
             buildSteps.Add((memory, aggSources, _) =>
                 aggSources[typeof(T)] = new FileAggregateSource<T>(null, queries, memory));
     }
 
     public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
     {
-        GuardRole<T>("projection");
         var queries = (ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>>)
             projectionQueryMaps.GetOrAdd(typeof(T), _ => new ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>>());
         var first = queries.IsEmpty;
@@ -52,19 +54,5 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
         foreach (var step in buildSteps)
             step(memory, aggSources, projSources);
         return memory;
-    }
-
-    private string? RoleOf(Type type)
-        => stores.ContainsKey(type) ? "vault"
-            : aggregateQueryMaps.ContainsKey(type) ? "aggregate"
-            : projectionQueryMaps.ContainsKey(type) ? "projection"
-            : null;
-
-    private void GuardRole<T>(string role)
-    {
-        var existing = RoleOf(typeof(T));
-        if (existing != null && existing != role)
-            throw new InvalidOperationException(
-                $"{typeof(T).Name} is already registered as {existing} and cannot also be registered as {role}.");
     }
 }

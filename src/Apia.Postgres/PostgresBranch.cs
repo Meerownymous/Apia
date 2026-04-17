@@ -6,10 +6,12 @@ namespace Apia.Postgres;
 
 /// <summary>
 /// Postgres unit of work. Save/Delete stage into the Marten session; Commit flushes via SaveChangesAsync.
+/// Only types registered via RegisterStore are writable.
 /// </summary>
 public sealed class PostgresBranch(
     IDocumentSession session,
     IMemory memory,
+    ConcurrentDictionary<Type, object> vaultTypes,
     ConcurrentDictionary<Type, object> aggregateRegistries,
     ConcurrentDictionary<Type, object> projectionRegistries)
     : IBranch
@@ -27,16 +29,14 @@ public sealed class PostgresBranch(
             session);
 
     public Task Save<T>(T entity)
-    {
-        session.Store(entity);
-        return Task.CompletedTask;
-    }
+        => vaultTypes.ContainsKey(typeof(T))
+            ? Task.FromResult(session.Store(entity))
+            : throw new InvalidOperationException($"{typeof(T).Name} has no registered store and cannot be saved.");
 
     public Task Delete<T>(Guid id)
-    {
-        session.Delete<T>(id);
-        return Task.CompletedTask;
-    }
+        => vaultTypes.ContainsKey(typeof(T))
+            ? Task.FromResult(session.Delete<T>(id))
+            : throw new InvalidOperationException($"{typeof(T).Name} has no registered store and cannot be deleted.");
 
     public Task Commit() => session.SaveChangesAsync();
 

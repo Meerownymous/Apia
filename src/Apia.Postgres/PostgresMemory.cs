@@ -7,6 +7,7 @@ namespace Apia.Postgres;
 /// <summary>Postgres-backed IMemory via a Marten IDocumentStore. Sessions are created per access.</summary>
 public sealed class PostgresMemory(
     IDocumentStore store,
+    ConcurrentDictionary<Type, object> vaultTypes,
     ConcurrentDictionary<Type, object> aggregateRegistries,
     ConcurrentDictionary<Type, object> projectionRegistries)
     : IMemory
@@ -26,7 +27,7 @@ public sealed class PostgresMemory(
     public IVault<T> Vault<T>() => new PostgresVault<T>(store);
 
     public IBranch Branch()
-        => new PostgresBranch(store.LightweightSession(), this, aggregateRegistries, projectionRegistries);
+        => new PostgresBranch(store.LightweightSession(), this, vaultTypes, aggregateRegistries, projectionRegistries);
 
     private static TRegistry Registry<T, TRegistry>(ConcurrentDictionary<Type, object> registries)
         where TRegistry : new()
