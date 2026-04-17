@@ -1,19 +1,22 @@
 using System.Collections.Concurrent;
+using OneOf;
+using Apia;
 
 namespace Apia.Ram;
 
 /// <summary>Thread-safe in-memory store for a single entity type, keyed by Guid.</summary>
-internal sealed class RamEntityStore<T>(Func<T, Guid> idOf)
+public sealed class RamEntityStore<T>(Func<T, Guid> idOf)
 {
     private readonly ConcurrentDictionary<Guid, T> store = new();
 
-    internal Func<T, Guid> IdOf => idOf;
+    public OneOf<T, NotFound> Get(Guid id)
+        => store.TryGetValue(id, out var entity)
+            ? OneOf<T, NotFound>.FromT0(entity!)
+            : new NotFound();
 
-    internal bool TryGet(Guid id, out T? entity) => store.TryGetValue(id, out entity);
+    public void Set(T entity) => store[idOf(entity)] = entity;
 
-    internal void Set(Guid id, T entity) => store[id] = entity;
+    public void Remove(Guid id) => store.TryRemove(id, out _);
 
-    internal void Remove(Guid id) => store.TryRemove(id, out _);
-
-    internal IEnumerable<T> All() => store.Values;
+    public IEnumerable<T> All() => store.Values;
 }

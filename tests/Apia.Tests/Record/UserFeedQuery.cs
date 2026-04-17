@@ -1,3 +1,3 @@
 namespace Apia.Tests.Record;
 
-public sealed record UserFeedQuery(Guid UserId, int Limit) : Query<UserPostSummaryView>;
+public sealed record UserFeedQuery(Guid UserId, int Limit);

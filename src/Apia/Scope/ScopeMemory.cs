@@ -5,7 +5,7 @@ namespace Apia.Scope;
 /// Vault access and Branch mutations. Aggregate reads pass through unchanged — projections
 /// handle their own filtering.
 /// </summary>
-internal sealed class ScopeMemory<TFilter>(
+public sealed class ScopeMemory<TFilter>(
     IMemory inner,
     ScopeObjectRegistry<TFilter> registry,
     TFilter filter)

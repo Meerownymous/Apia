@@ -2,7 +2,7 @@ namespace Apia.Scope;
 
 /// <summary>
 /// Collects <see cref="IVaultScope{TRecord,TFilter}"/> registrations for a specific filter type.
-/// Build once at startup; activate per-request via <see cref="MemoryScopeExtensions.Scoped{TFilter}"/>.
+/// Build once at startup; pass the result to <see cref="ScopeMemory{TFilter}"/> per-request.
 /// </summary>
 public sealed class ScopeBuilder<TFilter>
 {
@@ -14,5 +14,5 @@ public sealed class ScopeBuilder<TFilter>
         return this;
     }
 
-    internal ScopeObjectRegistry<TFilter> Build() => registry;
+    public ScopeObjectRegistry<TFilter> Build() => registry;
 }

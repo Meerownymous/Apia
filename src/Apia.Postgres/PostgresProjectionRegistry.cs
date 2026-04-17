@@ -4,10 +4,13 @@ using Marten;
 
 namespace Apia.Postgres;
 
-internal sealed class PostgresProjectionRegistry<T>
+public sealed class PostgresProjectionRegistry<T>
 {
-    internal readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> Handlers = new();
+    private readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> handlers = new();
 
-    internal void Register<TQuery>(Func<TQuery, IMemory, IDocumentSession, Task<T>> handler)
-        => Handlers[typeof(TQuery)] = (q, m, s) => handler((TQuery)q, m, s);
+    public void Register<TQuery>(Func<TQuery, IMemory, IDocumentSession, Task<T>> handler)
+        => handlers[typeof(TQuery)] = (q, m, s) => handler((TQuery)q, m, s);
+
+    public ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> Handlers()
+        => handlers;
 }

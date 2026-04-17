@@ -6,7 +6,7 @@ namespace Apia.Scope;
 /// Wraps <see cref="IVault{T}"/> and hides records that fall outside the active scope.
 /// Returns <see cref="NotFound"/> for out-of-scope ids — indistinguishable from a genuine miss.
 /// </summary>
-internal sealed class ScopeAwareVault<TRecord, TFilter>(
+public sealed class ScopeAwareVault<TRecord, TFilter>(
     IVault<TRecord> inner,
     IVaultScope<TRecord, TFilter> scope,
     TFilter filter)

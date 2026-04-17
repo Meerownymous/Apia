@@ -4,7 +4,7 @@ namespace Apia.Scope;
 /// Wraps <see cref="IBranch"/> and enforces <see cref="IVaultScope{TRecord,TFilter}"/> on
 /// Save and Delete. Uses the outer <see cref="IMemory"/> to load entities for CanDelete checks.
 /// </summary>
-internal sealed class ScopedBranch<TFilter>(
+public sealed class ScopedBranch<TFilter>(
     IBranch inner,
     IMemory memory,
     ScopeObjectRegistry<TFilter> registry,
@@ -16,16 +16,10 @@ internal sealed class ScopedBranch<TFilter>(
     public IProjectionSource<T> Projection<T>() => inner.Projection<T>();
 
     public Task Save<T>(T entity)
-    {
-        if (registry.HasScope<T>())
-        {
-            var scope = registry.ScopeFor<T>();
-            if (!scope.CanWrite(entity, filter))
-                throw new UnauthorizedAccessException(
-                    $"Access denied: cannot save {typeof(T).Name} — CanWrite returned false.");
-        }
-        return inner.Save(entity);
-    }
+        => !registry.HasScope<T>() || registry.ScopeFor<T>().CanWrite(entity, filter)
+            ? inner.Save(entity)
+            : throw new UnauthorizedAccessException(
+                $"Access denied: cannot save {typeof(T).Name} — CanWrite returned false.");
 
     public async Task Delete<T>(Guid id)
     {

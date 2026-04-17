@@ -11,25 +11,19 @@ public sealed class FileMemory(
     : IMemory
 {
     public IAggregateSource<T> Aggregate<T>()
-    {
-        if (!aggregateSources.TryGetValue(typeof(T), out var src))
-            throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
-        return (IAggregateSource<T>)src;
-    }
+        => aggregateSources.TryGetValue(typeof(T), out var src)
+            ? (IAggregateSource<T>)src
+            : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
     public IProjectionSource<T> Projection<T>()
-    {
-        if (!projectionSources.TryGetValue(typeof(T), out var src))
-            throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
-        return (IProjectionSource<T>)src;
-    }
+        => projectionSources.TryGetValue(typeof(T), out var src)
+            ? (IProjectionSource<T>)src
+            : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
     public IVault<T> Vault<T>()
-    {
-        if (!stores.TryGetValue(typeof(T), out var store))
-            throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
-        return new FileVault<T>((FileEntityStore<T>)store);
-    }
+        => stores.TryGetValue(typeof(T), out var store)
+            ? new FileVault<T>((FileEntityStore<T>)store)
+            : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
     public IBranch Branch() => new FileBranch(stores, aggregateSources, projectionSources);
 }

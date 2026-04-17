@@ -1,27 +1,29 @@
 using System.Text.Json;
+using OneOf;
+using Apia;
 
 namespace Apia.File;
 
 /// <summary>File-backed entity store. Persists as {TypeName}.json in the given directory.</summary>
-internal sealed class FileEntityStore<T>(string directory, Func<T, Guid> idOf)
+public sealed class FileEntityStore<T>(string directory, Func<T, Guid> idOf)
 {
     private readonly string path = Path.Combine(directory, $"{typeof(T).Name}.json");
     private readonly SemaphoreSlim fileLock = new(1, 1);
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
-    internal Func<T, Guid> IdOf => idOf;
-
-    internal async Task<T?> TryGet(Guid id)
+    public async Task<OneOf<T, NotFound>> Get(Guid id)
     {
         var store = await Read();
-        store.TryGetValue(id, out var entity);
-        return entity;
+        return store.TryGetValue(id, out var entity)
+            ? OneOf<T, NotFound>.FromT0(entity!)
+            : new NotFound();
     }
 
-    internal async Task<IEnumerable<T>> All() => (await Read()).Values;
+    public async Task<IEnumerable<T>> All() => (await Read()).Values;
 
-    internal async Task Set(Guid id, T entity)
+    public async Task Set(T entity)
     {
+        var id = idOf(entity);
         await fileLock.WaitAsync();
         try
         {
@@ -32,7 +34,7 @@ internal sealed class FileEntityStore<T>(string directory, Func<T, Guid> idOf)
         finally { fileLock.Release(); }
     }
 
-    internal async Task Remove(Guid id)
+    public async Task Remove(Guid id)
     {
         await fileLock.WaitAsync();
         try

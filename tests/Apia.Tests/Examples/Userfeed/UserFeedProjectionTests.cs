@@ -7,8 +7,7 @@ namespace Apia.Tests.Examples.Userfeed;
 
 public sealed class UserFeedProjectionTests
 {
-    [Fact]
-    public async Task BuildsFeed()
+    private static async Task<(IMemory memory, PostRecord post, UserRecord user1)> BuildFeedMemory()
     {
         var map = new RamMemoryMap();
         map.RegisterStore<UserRecord>(u => u.UserId);
@@ -28,14 +27,55 @@ public sealed class UserFeedProjectionTests
         await branch.Save(comment);
         await branch.Commit();
 
+        return (memory, post, user1);
+    }
+
+    [Fact]
+    public async Task BuildsFeed_ReturnsOneItem()
+    {
+        var (memory, _, user1) = await BuildFeedMemory();
+
         var feed = await new UserFeedProjection(memory)
             .From(new UserFeedQuery(user1.UserId, Limit: 20))
             .ToListAsync();
 
         Assert.Single(feed);
-        Assert.Equal(post.PostId,     feed[0].PostId);
-        Assert.Equal(user1.Username,  feed[0].AuthorName);
-        Assert.Equal(1,               feed[0].CommentCount);
+    }
+
+    [Fact]
+    public async Task BuildsFeed_ReturnsCorrectPostId()
+    {
+        var (memory, post, user1) = await BuildFeedMemory();
+
+        var feed = await new UserFeedProjection(memory)
+            .From(new UserFeedQuery(user1.UserId, Limit: 20))
+            .ToListAsync();
+
+        Assert.Equal(post.PostId, feed[0].PostId);
+    }
+
+    [Fact]
+    public async Task BuildsFeed_ReturnsCorrectAuthorName()
+    {
+        var (memory, _, user1) = await BuildFeedMemory();
+
+        var feed = await new UserFeedProjection(memory)
+            .From(new UserFeedQuery(user1.UserId, Limit: 20))
+            .ToListAsync();
+
+        Assert.Equal(user1.Username, feed[0].AuthorName);
+    }
+
+    [Fact]
+    public async Task BuildsFeed_ReturnsCorrectCommentCount()
+    {
+        var (memory, _, user1) = await BuildFeedMemory();
+
+        var feed = await new UserFeedProjection(memory)
+            .From(new UserFeedQuery(user1.UserId, Limit: 20))
+            .ToListAsync();
+
+        Assert.Equal(1, feed[0].CommentCount);
     }
 
     [Fact]

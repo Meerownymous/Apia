@@ -66,23 +66,27 @@ public sealed class RamMemoryMap : IMemoryMap
         var projRegistry = projectionRegistries.TryGetValue(typeof(T), out var pr)
             ? (ProjectionRegistry<T>)pr : new ProjectionRegistry<T>();
 
-        aggregateSources[typeof(T)]  = new RamAggregateSource<T>(store, aggRegistry.Handlers, memory);
-        projectionSources[typeof(T)] = new RamProjectionSource<T>(projRegistry.Handlers, memory);
+        aggregateSources[typeof(T)]  = new RamAggregateSource<T>(store, aggRegistry.Handlers(), memory);
+        projectionSources[typeof(T)] = new RamProjectionSource<T>(projRegistry.Handlers(), memory);
     }
 
     private sealed class AggregateRegistry<T>
     {
-        internal readonly ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> Handlers = new();
+        private readonly ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> handlers = new();
 
-        internal void Register<TQuery>(Func<TQuery, IMemory, IAsyncEnumerable<T>> handler)
-            => Handlers[typeof(TQuery)] = (q, m) => handler((TQuery)q, m);
+        public void Register<TQuery>(Func<TQuery, IMemory, IAsyncEnumerable<T>> handler)
+            => handlers[typeof(TQuery)] = (q, m) => handler((TQuery)q, m);
+
+        public ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> Handlers() => handlers;
     }
 
     private sealed class ProjectionRegistry<T>
     {
-        internal readonly ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>> Handlers = new();
+        private readonly ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>> handlers = new();
 
-        internal void Register<TQuery>(Func<TQuery, IMemory, Task<T>> handler)
-            => Handlers[typeof(TQuery)] = (q, m) => handler((TQuery)q, m);
+        public void Register<TQuery>(Func<TQuery, IMemory, Task<T>> handler)
+            => handlers[typeof(TQuery)] = (q, m) => handler((TQuery)q, m);
+
+        public ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>> Handlers() => handlers;
     }
 }

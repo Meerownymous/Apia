@@ -25,7 +25,7 @@ public sealed class BranchVaultTests
     }
 
     [Fact]
-    public async Task Branch_SaveAndCommit_PersistsEntity()
+    public async Task Branch_SaveAndCommit_LoadReturnsT0()
     {
         var memory = BuildMemory();
         var user   = new UserRecord("Miro");
@@ -36,6 +36,19 @@ public sealed class BranchVaultTests
 
         var result = await memory.Vault<UserRecord>().Load(user.UserId);
         Assert.True(result.IsT0);
+    }
+
+    [Fact]
+    public async Task Branch_SaveAndCommit_LoadReturnsCorrectEntity()
+    {
+        var memory = BuildMemory();
+        var user   = new UserRecord("Miro");
+
+        var branch = memory.Branch();
+        await branch.Save(user);
+        await branch.Commit();
+
+        var result = await memory.Vault<UserRecord>().Load(user.UserId);
         Assert.Equal(user, result.AsT0);
     }
 
@@ -72,10 +85,10 @@ public sealed class BranchVaultTests
     }
 
     [Fact]
-    public async Task Branch_SaveUpserts_ExistingEntity()
+    public async Task Branch_SaveUpserts_LoadReturnsT0()
     {
-        var memory  = BuildMemory();
-        var user    = new UserRecord("Miro");
+        var memory = BuildMemory();
+        var user   = new UserRecord("Miro");
 
         var b1 = memory.Branch();
         await b1.Save(user);
@@ -88,6 +101,24 @@ public sealed class BranchVaultTests
 
         var result = await memory.Vault<UserRecord>().Load(user.UserId);
         Assert.True(result.IsT0);
+    }
+
+    [Fact]
+    public async Task Branch_SaveUpserts_LoadReturnsUpdatedUsername()
+    {
+        var memory = BuildMemory();
+        var user   = new UserRecord("Miro");
+
+        var b1 = memory.Branch();
+        await b1.Save(user);
+        await b1.Commit();
+
+        var updated = user with { Username = "Ralph" };
+        var b2      = memory.Branch();
+        await b2.Save(updated);
+        await b2.Commit();
+
+        var result = await memory.Vault<UserRecord>().Load(user.UserId);
         Assert.Equal("Ralph", result.AsT0.Username);
     }
 

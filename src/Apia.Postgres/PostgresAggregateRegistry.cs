@@ -4,10 +4,13 @@ using Marten;
 
 namespace Apia.Postgres;
 
-internal sealed class PostgresAggregateRegistry<T>
+public sealed class PostgresAggregateRegistry<T>
 {
-    internal readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> Handlers = new();
+    private readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> handlers = new();
 
-    internal void Register<TQuery>(Func<TQuery, IMemory, IDocumentSession, IAsyncEnumerable<T>> handler)
-        => Handlers[typeof(TQuery)] = (q, m, s) => handler((TQuery)q, m, s);
+    public void Register<TQuery>(Func<TQuery, IMemory, IDocumentSession, IAsyncEnumerable<T>> handler)
+        => handlers[typeof(TQuery)] = (q, m, s) => handler((TQuery)q, m, s);
+
+    public ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> Handlers()
+        => handlers;
 }

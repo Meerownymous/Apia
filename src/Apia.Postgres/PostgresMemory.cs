@@ -12,23 +12,25 @@ public sealed class PostgresMemory(
     : IMemory
 {
     public IAggregateSource<T> Aggregate<T>()
-    {
-        var registry = aggregateRegistries.TryGetValue(typeof(T), out var r)
-            ? (PostgresAggregateRegistry<T>)r
-            : new PostgresAggregateRegistry<T>();
-        return new PostgresAggregateSource<T>(registry.Handlers, this, store.QuerySession());
-    }
+        => new PostgresAggregateSource<T>(
+            Registry<T, PostgresAggregateRegistry<T>>(aggregateRegistries).Handlers(),
+            this,
+            store.QuerySession());
 
     public IProjectionSource<T> Projection<T>()
-    {
-        var registry = projectionRegistries.TryGetValue(typeof(T), out var r)
-            ? (PostgresProjectionRegistry<T>)r
-            : new PostgresProjectionRegistry<T>();
-        return new PostgresProjectionSource<T>(registry.Handlers, this, store.QuerySession());
-    }
+        => new PostgresProjectionSource<T>(
+            Registry<T, PostgresProjectionRegistry<T>>(projectionRegistries).Handlers(),
+            this,
+            store.QuerySession());
 
     public IVault<T> Vault<T>() => new PostgresVault<T>(store);
 
     public IBranch Branch()
         => new PostgresBranch(store.LightweightSession(), this, aggregateRegistries, projectionRegistries);
+
+    private static TRegistry Registry<T, TRegistry>(ConcurrentDictionary<Type, object> registries)
+        where TRegistry : new()
+        => registries.TryGetValue(typeof(T), out var r)
+            ? (TRegistry)r
+            : new TRegistry();
 }

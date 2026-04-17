@@ -66,21 +66,27 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
         var projReg = projectionRegistries.TryGetValue(typeof(T), out var pr)
             ? (FileProjectionRegistry<T>)pr : new FileProjectionRegistry<T>();
 
-        aggregateSources[typeof(T)]  = new FileAggregateSource<T>(store, aggReg.Handlers, memory);
-        projectionSources[typeof(T)] = new FileProjectionSource<T>(projReg.Handlers, memory);
+        aggregateSources[typeof(T)]  = new FileAggregateSource<T>(store, aggReg.Handlers(), memory);
+        projectionSources[typeof(T)] = new FileProjectionSource<T>(projReg.Handlers(), memory);
     }
 
     private sealed class FileAggregateRegistry<T>
     {
-        internal readonly ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> Handlers = new();
-        internal void Register<TQuery>(Func<TQuery, IMemory, IAsyncEnumerable<T>> h)
-            => Handlers[typeof(TQuery)] = (q, m) => h((TQuery)q, m);
+        private readonly ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> handlers = new();
+
+        public void Register<TQuery>(Func<TQuery, IMemory, IAsyncEnumerable<T>> h)
+            => handlers[typeof(TQuery)] = (q, m) => h((TQuery)q, m);
+
+        public ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> Handlers() => handlers;
     }
 
     private sealed class FileProjectionRegistry<T>
     {
-        internal readonly ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>> Handlers = new();
-        internal void Register<TQuery>(Func<TQuery, IMemory, Task<T>> h)
-            => Handlers[typeof(TQuery)] = (q, m) => h((TQuery)q, m);
+        private readonly ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>> handlers = new();
+
+        public void Register<TQuery>(Func<TQuery, IMemory, Task<T>> h)
+            => handlers[typeof(TQuery)] = (q, m) => h((TQuery)q, m);
+
+        public ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>> Handlers() => handlers;
     }
 }
