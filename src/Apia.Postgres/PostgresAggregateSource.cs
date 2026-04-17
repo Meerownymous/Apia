@@ -9,9 +9,9 @@ public interface IPostgresAggregateSource<T, TQuery>
     IAsyncEnumerable<T> From(TQuery query, IMemory memory, IDocumentSession session);
 }
 
-/// <summary>Dispatches From&lt;TQuery&gt; to registered handlers or falls back to a full table scan for AllOf&lt;T&gt;.</summary>
+/// <summary>Dispatches From&lt;TQuery&gt; to registered sources or falls back to a full table scan for AllOf&lt;T&gt;.</summary>
 public sealed class PostgresAggregateSource<T>(
-    ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> handlers,
+    ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> sources,
     IMemory memory,
     IDocumentSession session)
     : IAggregateSource<T>
@@ -19,8 +19,8 @@ public sealed class PostgresAggregateSource<T>(
     public IAsyncEnumerable<T> From<TQuery>(TQuery query)
         => query is AllOf<T>
             ? session.Query<T>().ToAsyncEnumerable()
-            : handlers.TryGetValue(typeof(TQuery), out var handler)
-                ? handler(query!, memory, session)
+            : sources.TryGetValue(typeof(TQuery), out var source)
+                ? source(query!, memory, session)
                 : throw new InvalidOperationException(
-                    $"No aggregate handler registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
+                    $"No source registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
 }

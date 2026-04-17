@@ -6,11 +6,11 @@ namespace Apia.Postgres;
 
 public sealed class PostgresAggregateRegistry<T>
 {
-    private readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> handlers = new();
+    private readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> sources = new();
 
-    public void Register<TQuery>(Func<TQuery, IMemory, IDocumentSession, IAsyncEnumerable<T>> handler)
-        => handlers[typeof(TQuery)] = (q, m, s) => handler((TQuery)q, m, s);
+    public void Register<TQuery>(Func<TQuery, IMemory, IDocumentSession, IAsyncEnumerable<T>> source)
+        => sources[typeof(TQuery)] = (q, m, s) => source((TQuery)q, m, s);
 
-    public ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> Handlers()
-        => handlers;
+    public ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> Sources()
+        => sources;
 }
