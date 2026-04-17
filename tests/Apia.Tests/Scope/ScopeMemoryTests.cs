@@ -10,111 +10,99 @@ namespace Apia.Tests.Scope;
 
 public sealed class ScopeMemoryTests
 {
-    private static IMemory BuildScopedMemory(IScope<PostRecord, Guid> scope, Guid authorId)
-    {
-        var map = new RamMemoryMap();
-        map.RegisterStore(new PostRecordId());
-        var registry = new ScopeBuilder<Guid>()
-            .Register(scope)
-            .Build();
-        return new ScopeMemory<Guid>(map.Build(), registry, authorId);
-    }
-
-    private static async Task<IMemory> BuildWithPosts(IScope<PostRecord, Guid> scope, Guid authorId, params PostRecord[] posts)
-    {
-        var map = new RamMemoryMap();
-        map.RegisterStore(new PostRecordId());
-        var inner = map.Build();
-
-        var branch = inner.Branch();
-        foreach (var post in posts)
-            await branch.Save(post);
-        await branch.Commit();
-
-        var registry = new ScopeBuilder<Guid>()
-            .Register(scope)
-            .Build();
-        return new ScopeMemory<Guid>(inner, registry, authorId);
-    }
-
     [Fact]
     public async Task Aggregate_AllOf_ExcludesOutOfScopeRecords()
     {
         var author1 = Guid.NewGuid();
-        var author2 = Guid.NewGuid();
-        var post1   = new PostRecord(Guid.NewGuid(), author1, "Hello", 0, new HashSet<Guid>(), DateTime.UtcNow);
-        var post2   = new PostRecord(Guid.NewGuid(), author2, "World", 0, new HashSet<Guid>(), DateTime.UtcNow);
+        var post1   = new PostRecord(Guid.NewGuid(), author1, "Mine", 0, new HashSet<Guid>(), DateTime.UtcNow);
+        var map     = new RamMemoryMap();
+        map.RegisterStore(new PostRecordId());
+        var inner  = map.Build();
+        var branch = inner.Branch();
+        await branch.Save(post1);
+        await branch.Save(new PostRecord(Guid.NewGuid(), Guid.NewGuid(), "Not mine", 0, new HashSet<Guid>(), DateTime.UtcNow));
+        await branch.Commit();
 
-        var memory = await BuildWithPosts(new AuthorScope(), author1, post1, post2);
-
-        var results = await memory.Aggregate<PostRecord>()
-            .From(new AllOf<PostRecord>())
-            .ToListAsync();
-
-        Assert.Single(results);
-        Assert.Equal(post1.PostId, results[0].PostId);
+        Assert.Equal(
+            post1,
+            (await new ScopeMemory<Guid>(inner, new ScopeBuilder<Guid>().Register<PostRecord>(new AuthorScope()).Build(), author1)
+                .Aggregate<PostRecord>()
+                .From(new AllOf<PostRecord>())
+                .ToListAsync())
+            .Single());
     }
 
     [Fact]
     public async Task Aggregate_AllOf_IncludesInScopeRecords()
     {
         var author = Guid.NewGuid();
-        var post1  = new PostRecord(Guid.NewGuid(), author, "A", 0, new HashSet<Guid>(), DateTime.UtcNow);
-        var post2  = new PostRecord(Guid.NewGuid(), author, "B", 0, new HashSet<Guid>(), DateTime.UtcNow);
+        var map    = new RamMemoryMap();
+        map.RegisterStore(new PostRecordId());
+        var inner  = map.Build();
+        var branch = inner.Branch();
+        await branch.Save(new PostRecord(Guid.NewGuid(), author, "A", 0, new HashSet<Guid>(), DateTime.UtcNow));
+        await branch.Save(new PostRecord(Guid.NewGuid(), author, "B", 0, new HashSet<Guid>(), DateTime.UtcNow));
+        await branch.Commit();
 
-        var memory = await BuildWithPosts(new AuthorScope(), author, post1, post2);
-
-        var results = await memory.Aggregate<PostRecord>()
-            .From(new AllOf<PostRecord>())
-            .ToListAsync();
-
-        Assert.Equal(2, results.Count);
+        Assert.Equal(
+            2,
+            (await new ScopeMemory<Guid>(inner, new ScopeBuilder<Guid>().Register<PostRecord>(new AuthorScope()).Build(), author)
+                .Aggregate<PostRecord>()
+                .From(new AllOf<PostRecord>())
+                .ToListAsync())
+            .Count);
     }
 
     [Fact]
     public async Task Vault_Load_ReturnsNotFound_WhenOutOfScope()
     {
-        var author1 = Guid.NewGuid();
-        var author2 = Guid.NewGuid();
-        var post    = new PostRecord(Guid.NewGuid(), author2, "Not mine", 0, new HashSet<Guid>(), DateTime.UtcNow);
+        var post   = new PostRecord(Guid.NewGuid(), Guid.NewGuid(), "Not mine", 0, new HashSet<Guid>(), DateTime.UtcNow);
+        var map    = new RamMemoryMap();
+        map.RegisterStore(new PostRecordId());
+        var inner  = map.Build();
+        var branch = inner.Branch();
+        await branch.Save(post);
+        await branch.Commit();
 
-        var memory = await BuildWithPosts(new AuthorScope(), author1, post);
-
-        var result = await memory.Vault<PostRecord>().Load(post.PostId);
-
-        Assert.True(result.IsT1);
-    }
-
-    // Scope that restricts visibility to posts by a specific author
-    private sealed class AuthorScope : IScope<PostRecord, Guid>
-    {
-        public bool Includes(PostRecord post, Guid authorId) => post.AuthorId == authorId;
-    }
-
-    // Scope with LINQ expression for SQL-pushdown backends
-    private sealed class AuthorLinqScope : IScope<PostRecord, Guid>
-    {
-        public bool Includes(PostRecord post, Guid authorId) => post.AuthorId == authorId;
-
-        public OneOf<Expression<Func<PostRecord, bool>>, None> AsLinq(Guid authorId)
-            => (Expression<Func<PostRecord, bool>>)(p => p.AuthorId == authorId);
+        Assert.True(
+            (await new ScopeMemory<Guid>(inner, new ScopeBuilder<Guid>().Register<PostRecord>(new AuthorScope()).Build(), Guid.NewGuid())
+                .Vault<PostRecord>()
+                .Load(post.PostId))
+            .IsT1);
     }
 
     [Fact]
     public async Task Aggregate_AllOf_WithLinqScope_ExcludesOutOfScopeRecords()
     {
         var author1 = Guid.NewGuid();
-        var author2 = Guid.NewGuid();
-        var post1   = new PostRecord(Guid.NewGuid(), author1, "Mine",     0, new HashSet<Guid>(), DateTime.UtcNow);
-        var post2   = new PostRecord(Guid.NewGuid(), author2, "Not mine", 0, new HashSet<Guid>(), DateTime.UtcNow);
+        var post1   = new PostRecord(Guid.NewGuid(), author1, "Mine", 0, new HashSet<Guid>(), DateTime.UtcNow);
+        var map     = new RamMemoryMap();
+        map.RegisterStore(new PostRecordId());
+        var inner  = map.Build();
+        var branch = inner.Branch();
+        await branch.Save(post1);
+        await branch.Save(new PostRecord(Guid.NewGuid(), Guid.NewGuid(), "Not mine", 0, new HashSet<Guid>(), DateTime.UtcNow));
+        await branch.Commit();
 
-        var memory = await BuildWithPosts(new AuthorLinqScope(), author1, post1, post2);
+        Assert.Equal(
+            post1,
+            (await new ScopeMemory<Guid>(inner, new ScopeBuilder<Guid>().Register<PostRecord>(new AuthorLinqScope()).Build(), author1)
+                .Aggregate<PostRecord>()
+                .From(new AllOf<PostRecord>())
+                .ToListAsync())
+            .Single());
+    }
 
-        var results = await memory.Aggregate<PostRecord>()
-            .From(new AllOf<PostRecord>())
-            .ToListAsync();
+    private sealed record AuthorScope : IScope<PostRecord, Guid>
+    {
+        public bool Includes(PostRecord post, Guid authorId) => post.AuthorId == authorId;
+    }
 
-        Assert.Single(results);
-        Assert.Equal(post1.PostId, results[0].PostId);
+    private sealed record AuthorLinqScope : IScope<PostRecord, Guid>
+    {
+        public bool Includes(PostRecord post, Guid authorId) => post.AuthorId == authorId;
+
+        public OneOf<Expression<Func<PostRecord, bool>>, None> AsLinq(Guid authorId)
+            => (Expression<Func<PostRecord, bool>>)(p => p.AuthorId == authorId);
     }
 }
