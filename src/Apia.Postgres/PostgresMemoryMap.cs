@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using Apia;
-using JasperFx;
 using Marten;
 using Weasel.Core;
 
@@ -8,20 +7,16 @@ namespace Apia.Postgres;
 
 /// <summary>
 /// Compose a Postgres-backed IMemory via Marten.
-/// Synopsis sources receive (IMemory Memory, IDocumentSession Session) as context.
-/// Configure schema indices via the constructor's Action&lt;StoreOptions&gt;.
+/// Register stores and handlers, then call Build().
 /// </summary>
 public sealed class PostgresMemoryMap : IMemoryMap
 {
     private readonly IDocumentStore store;
-    private readonly ConcurrentDictionary<Type, object> entities = new();
-    private readonly ConcurrentDictionary<Type, object> vaults   = new();
-    private readonly ConcurrentDictionary<(Type, Type), object> sources = new();
+    private readonly ConcurrentDictionary<Type, object> aggregateRegistries  = new();
+    private readonly ConcurrentDictionary<Type, object> projectionRegistries = new();
 
     public PostgresMemoryMap(string connectionString)
-        : this(connectionString, _ => { })
-    {
-    }
+        : this(connectionString, _ => { }) { }
 
     public PostgresMemoryMap(string connectionString, Action<StoreOptions> configure)
     {
@@ -29,60 +24,41 @@ public sealed class PostgresMemoryMap : IMemoryMap
         {
             opts.Connection(connectionString);
             opts.AutoCreateSchemaObjects = AutoCreate.All;
-
-            opts.Schema.For<ApiaVersion>()
-                .Index(v => v.RecordType)
-                .Index(v => v.RecordId);
-
             configure(opts);
         });
     }
 
-    /// <inheritdoc/>
-    public void Register<TResult>(IEntities<TResult> e) where TResult : notnull
-        => entities[typeof(TResult)] =
-            (Func<(IMemory Memory, IDocumentSession Session), IEntities<TResult>>)(context => e);
+    public void RegisterStore<T>(Func<T, Guid> idOf) where T : notnull
+    {
+        aggregateRegistries.TryAdd(typeof(T), new PostgresAggregateRegistry<T>());
+        projectionRegistries.TryAdd(typeof(T), new PostgresProjectionRegistry<T>());
+    }
 
-    /// <summary>Register a Postgres entity origin. Context provides IMemory and IDocumentSession at query time.</summary>
-    public void Register<TResult>(IEntitiesOrigin<TResult, (IMemory Memory, IDocumentSession Session)> origin)
-        where TResult : notnull
-        => entities[typeof(TResult)] =
-            (Func<(IMemory Memory, IDocumentSession Session), IEntities<TResult>>)(context => origin.Bind(context));
+    public void RegisterQuery<T, TQuery>(Func<TQuery, IMemory, IAsyncEnumerable<T>> handler) where T : notnull
+    {
+        var reg = (PostgresAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
+        reg.Register<TQuery>((q, m, _) => handler(q, m));
+    }
 
-    /// <inheritdoc/>
-    public void Register<TResult>(IVault<TResult> vault) where TResult : notnull
-        => vaults[typeof(TResult)] = vault;
+    /// <summary>Register a Postgres-specific aggregate query with full session access.</summary>
+    public void RegisterQuery<T, TQuery>(Func<TQuery, IMemory, IDocumentSession, IAsyncEnumerable<T>> handler) where T : notnull
+    {
+        var reg = (PostgresAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
+        reg.Register<TQuery>(handler);
+    }
 
-    /// <summary>Register a synopsis source. Context provides IMemory and IDocumentSession at query time.</summary>
-    public void Register<TResult, TQuery>(
-        IViewStreamOrigin<TResult, TQuery, (IMemory Memory, IDocumentSession Session)> source)
-        where TQuery : Query<TResult>
-        => sources[(typeof(TResult), typeof(TQuery))] = source;
+    public void RegisterProjection<T, TQuery>(Func<TQuery, IMemory, Task<T>> handler) where T : notnull
+    {
+        var reg = (PostgresProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
+        reg.Register<TQuery>((q, m, _) => handler(q, m));
+    }
 
-    /// <summary>
-    /// Register a Postgres-specific synopsis as a backend override for a ShallowViewStream.
-    /// TShallowView names the application-layer synopsis being overridden.
-    /// </summary>
-    public void Register<TShallowView, TResult, TQuery>(PostgresViewStream<TResult, TQuery> postgresViewStream)
-        where TShallowView : ShallowViewStream<TResult, TQuery>
-        where TQuery : Query<TResult>
-        => sources[(typeof(TResult), typeof(TQuery))] = postgresViewStream;
+    /// <summary>Register a Postgres-specific projection query with full session access.</summary>
+    public void RegisterProjection<T, TQuery>(Func<TQuery, IMemory, IDocumentSession, Task<T>> handler) where T : notnull
+    {
+        var reg = (PostgresProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
+        reg.Register<TQuery>(handler);
+    }
 
-    /// <summary>Register a synopsis source. Context provides IMemory and IDocumentSession at query time.</summary>
-    public void Register<TResult, TQuery>(
-        IViewOrigin<TResult, TQuery, (IMemory Memory, IDocumentSession Session)> source)
-        where TQuery : Query<TResult>
-        => sources[(typeof(TResult), typeof(TQuery))] = source;
-
-    /// <summary>
-    /// Register a Postgres-specific synopsis as a backend override for a ShallowView.
-    /// TShallowView names the application-layer synopsis being overridden.
-    /// </summary>
-    public void Register<TShallowView, TResult, TQuery>(PostgresView<TResult, TQuery> postgresView)
-        where TShallowView : ShallowView<TResult, TQuery>
-        where TQuery : Query<TResult>
-        => sources[(typeof(TResult), typeof(TQuery))] = postgresView;
-
-    /// <inheritdoc/>
-    public IMemory Build() => new PostgresMemory(store, entities, vaults, sources);
+    public IMemory Build() => new PostgresMemory(store, aggregateRegistries, projectionRegistries);
 }
