@@ -5,7 +5,7 @@ using Apia;
 namespace Apia.Ram;
 
 /// <summary>Thread-safe in-memory store for a single entity type, keyed by Guid.</summary>
-public sealed class RamEntityStore<T>(Func<T, Guid> idOf)
+public sealed class RamEntityStore<T>(IIdentity<T> identity)
 {
     private readonly ConcurrentDictionary<Guid, T> store = new();
 
@@ -14,7 +14,7 @@ public sealed class RamEntityStore<T>(Func<T, Guid> idOf)
             ? OneOf<T, NotFound>.FromT0(entity!)
             : new NotFound();
 
-    public void Set(T entity) => store[idOf(entity)] = entity;
+    public void Set(T entity) => store[identity.Of(entity)] = entity;
 
     public void Remove(Guid id) => store.TryRemove(id, out _);
 

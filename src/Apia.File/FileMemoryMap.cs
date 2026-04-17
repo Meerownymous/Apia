@@ -10,9 +10,9 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
     private readonly ConcurrentDictionary<Type, object> aggregateRegistries  = new();
     private readonly ConcurrentDictionary<Type, object> projectionRegistries = new();
 
-    public void RegisterStore<T>(Func<T, Guid> idOf) where T : notnull
+    public void RegisterStore<T>(IIdentity<T> identity) where T : notnull
     {
-        stores[typeof(T)] = new FileEntityStore<T>(directory, idOf);
+        stores[typeof(T)] = new FileEntityStore<T>(directory, identity);
         aggregateRegistries.TryAdd(typeof(T), new FileAggregateRegistry<T>());
         projectionRegistries.TryAdd(typeof(T), new FileProjectionRegistry<T>());
     }

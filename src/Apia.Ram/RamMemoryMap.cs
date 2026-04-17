@@ -10,9 +10,9 @@ public sealed class RamMemoryMap : IMemoryMap
     private readonly ConcurrentDictionary<Type, object> aggregateRegistries = new();
     private readonly ConcurrentDictionary<Type, object> projectionRegistries = new();
 
-    public void RegisterStore<T>(Func<T, Guid> idOf) where T : notnull
+    public void RegisterStore<T>(IIdentity<T> identity) where T : notnull
     {
-        stores[typeof(T)] = new RamEntityStore<T>(idOf);
+        stores[typeof(T)] = new RamEntityStore<T>(identity);
         aggregateRegistries.TryAdd(typeof(T), new AggregateRegistry<T>());
         projectionRegistries.TryAdd(typeof(T), new ProjectionRegistry<T>());
     }

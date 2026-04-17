@@ -10,7 +10,7 @@ public sealed class BranchVaultTests
     private static IMemory BuildMemory()
     {
         var map = new RamMemoryMap();
-        map.RegisterStore<UserRecord>(u => u.UserId);
+        map.RegisterStore(new UserRecordId());
         return map.Build();
     }
 

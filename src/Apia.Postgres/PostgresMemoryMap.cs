@@ -28,7 +28,7 @@ public sealed class PostgresMemoryMap : IMemoryMap
         });
     }
 
-    public void RegisterStore<T>(Func<T, Guid> idOf) where T : notnull
+    public void RegisterStore<T>(IIdentity<T> identity) where T : notnull
     {
         aggregateRegistries.TryAdd(typeof(T), new PostgresAggregateRegistry<T>());
         projectionRegistries.TryAdd(typeof(T), new PostgresProjectionRegistry<T>());
