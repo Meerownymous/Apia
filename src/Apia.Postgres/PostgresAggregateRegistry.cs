@@ -4,7 +4,7 @@ using Marten;
 
 namespace Apia.Postgres;
 
-public sealed class PostgresAggregateRegistry<T>
+internal sealed class PostgresAggregateRegistry<T>
 {
     private readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> sources = new();
 

@@ -4,7 +4,7 @@ using Marten;
 
 namespace Apia.Postgres;
 
-public sealed class PostgresProjectionRegistry<T>
+internal sealed class PostgresProjectionRegistry<T>
 {
     private readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> sources = new();
 

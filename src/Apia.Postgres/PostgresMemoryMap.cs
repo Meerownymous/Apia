@@ -9,7 +9,7 @@ namespace Apia.Postgres;
 /// Compose a Postgres-backed IMemory via Marten.
 /// A type may be registered as vault, aggregate, and/or projection; only vault types are writable via IBranch.
 /// </summary>
-public sealed class PostgresMemoryMap : IMemoryMap
+public sealed class PostgresMemoryMap : IPostgresMemoryMap
 {
     private readonly IDocumentStore store;
     private readonly ConcurrentDictionary<Type, object> vaultTypes           = new();
@@ -41,10 +41,10 @@ public sealed class PostgresMemoryMap : IMemoryMap
         reg.Register<TQuery>((q, m, _) => source.From(q, m));
     }
 
-    public void RegisterQuery<T, TQuery>(IPostgresAggregateSource<T, TQuery> source) where T : notnull
+    public void RegisterQuery<T, TQuery>(Func<TQuery, IMemory, IDocumentSession, IAsyncEnumerable<T>> source) where T : notnull
     {
         var reg = (PostgresAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
-        reg.Register<TQuery>((q, m, s) => source.From(q, m, s));
+        reg.Register<TQuery>(source);
     }
 
     public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
@@ -53,10 +53,10 @@ public sealed class PostgresMemoryMap : IMemoryMap
         reg.Register<TQuery>((q, m, _) => source.From(q, m));
     }
 
-    public void RegisterProjection<T, TQuery>(IPostgresProjectionSource<T, TQuery> source) where T : notnull
+    public void RegisterProjection<T, TQuery>(Func<TQuery, IMemory, IDocumentSession, Task<T>> source) where T : notnull
     {
         var reg = (PostgresProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
-        reg.Register<TQuery>((q, m, s) => source.From(q, m, s));
+        reg.Register<TQuery>(source);
     }
 
     public IMemory Build() => new PostgresMemory(store, vaultTypes, aggregateRegistries, projectionRegistries);

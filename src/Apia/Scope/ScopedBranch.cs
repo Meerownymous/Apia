@@ -7,7 +7,7 @@ namespace Apia.Scope;
 public sealed class ScopedBranch<TFilter>(
     IBranch inner,
     IMemory memory,
-    ScopeObjectRegistry<TFilter> registry,
+    IScopeRegistry<TFilter> registry,
     TFilter filter)
     : IBranch
 {

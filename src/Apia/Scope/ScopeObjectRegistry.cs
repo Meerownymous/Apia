@@ -1,6 +1,6 @@
 namespace Apia.Scope;
 
-public sealed class ScopeObjectRegistry<TFilter>
+internal sealed class ScopeObjectRegistry<TFilter> : IScopeRegistry<TFilter>
 {
     private readonly Dictionary<Type, object> scopes = new();
 

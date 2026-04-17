@@ -4,11 +4,6 @@ using Marten;
 
 namespace Apia.Postgres;
 
-public interface IPostgresProjectionSource<T, TQuery>
-{
-    Task<T> From(TQuery query, IMemory memory, IDocumentSession session);
-}
-
 /// <summary>Dispatches From&lt;TQuery&gt; to registered single-result sources.</summary>
 public sealed class PostgresProjectionSource<T>(
     ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> sources,

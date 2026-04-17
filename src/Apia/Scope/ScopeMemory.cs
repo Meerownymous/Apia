@@ -8,7 +8,7 @@ namespace Apia.Scope;
 /// </summary>
 public sealed class ScopeMemory<TFilter>(
     IMemory inner,
-    ScopeObjectRegistry<TFilter> registry,
+    IScopeRegistry<TFilter> registry,
     TFilter filter)
     : IMemory
 {
