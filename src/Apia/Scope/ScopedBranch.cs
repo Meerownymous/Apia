@@ -1,7 +1,7 @@
 namespace Apia.Scope;
 
 /// <summary>
-/// Wraps <see cref="IBranch"/> and enforces <see cref="IVaultScope{TRecord,TFilter}"/> on
+/// Wraps <see cref="IBranch"/> and enforces <see cref="IScope{TRecord,TFilter}"/> on
 /// Save and Delete. Uses the outer <see cref="IMemory"/> to load entities for CanDelete checks.
 /// </summary>
 public sealed class ScopedBranch<TFilter>(
