@@ -5,7 +5,7 @@ namespace Apia.File;
 
 /// <summary>
 /// Dispatches From&lt;TQuery&gt; to registered sources.
-/// Vault types pass a non-null store to support <see cref="AllOf{T}"/>;
+/// Vault types pass a non-null store to support <see cref="AllOf{T}"/> and <see cref="LinqQuery{T}"/>;
 /// aggregate types pass null and only support registered query sources.
 /// </summary>
 public sealed class FileAggregateSource<T>(
@@ -20,14 +20,26 @@ public sealed class FileAggregateSource<T>(
                 ? All()
                 : throw new InvalidOperationException(
                     $"{typeof(T).Name} is an aggregate type and does not support AllOf.")
-            : sources.TryGetValue(typeof(TQuery), out var source)
-                ? source(query!, memory)
+        : query is LinqQuery<T> lq
+            ? store != null
+                ? Filtered(lq.Predicate.Compile())
                 : throw new InvalidOperationException(
-                    $"No source registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
+                    $"{typeof(T).Name} is an aggregate type and does not support LinqQuery.")
+        : sources.TryGetValue(typeof(TQuery), out var source)
+            ? source(query!, memory)
+            : throw new InvalidOperationException(
+                $"No source registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
 
     private async IAsyncEnumerable<T> All()
     {
         foreach (var entity in await store!.All())
             yield return entity;
+    }
+
+    private async IAsyncEnumerable<T> Filtered(Func<T, bool> predicate)
+    {
+        foreach (var entity in await store!.All())
+            if (predicate(entity))
+                yield return entity;
     }
 }

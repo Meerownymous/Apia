@@ -8,7 +8,7 @@ namespace Apia.Scope;
 /// </summary>
 public sealed class ScopeAwareVault<TRecord, TFilter>(
     IVault<TRecord> inner,
-    IVaultScope<TRecord, TFilter> scope,
+    IScope<TRecord, TFilter> scope,
     TFilter filter)
     : IVault<TRecord>
 {

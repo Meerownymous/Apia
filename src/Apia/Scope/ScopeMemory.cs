@@ -1,9 +1,10 @@
 namespace Apia.Scope;
 
 /// <summary>
-/// Decorator that enforces registered <see cref="IVaultScope{TRecord,TFilter}"/> objects on
-/// Vault access and Branch mutations. Aggregate reads pass through unchanged — projections
-/// handle their own filtering.
+/// Decorator that enforces registered <see cref="IScope{TRecord,TFilter}"/> objects on
+/// Vault access and Branch mutations. Aggregate reads are scope-filtered via
+/// <see cref="ScopeFilteredAggregateSource{TRecord,TFilter}"/>.
+/// Projection reads pass through unchanged — computed values cannot be post-filtered.
 /// </summary>
 public sealed class ScopeMemory<TFilter>(
     IMemory inner,
@@ -11,7 +12,13 @@ public sealed class ScopeMemory<TFilter>(
     TFilter filter)
     : IMemory
 {
-    public IAggregateSource<T> Aggregate<T>() => inner.Aggregate<T>();
+    public IAggregateSource<T> Aggregate<T>()
+    {
+        var source = inner.Aggregate<T>();
+        return registry.HasScope<T>()
+            ? new ScopeFilteredAggregateSource<T, TFilter>(source, registry.ScopeFor<T>(), filter)
+            : source;
+    }
 
     public IProjectionSource<T> Projection<T>() => inner.Projection<T>();
 
