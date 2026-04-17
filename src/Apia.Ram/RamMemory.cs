@@ -22,7 +22,7 @@ public sealed class RamMemory(
 
     public IVault<T> Vault<T>()
         => stores.TryGetValue(typeof(T), out var store)
-            ? new RamVault<T>((RamEntityStore<T>)store)
+            ? new RamVault<T>((IEntityStore<T>)store)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
     public IBranch Branch() => new RamBranch(stores, aggregateSources, projectionSources);

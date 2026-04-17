@@ -1,21 +1,20 @@
-using System.Collections.Concurrent;
 using Apia;
 using Marten;
 
 namespace Apia.Postgres;
 
-/// <summary>Dispatches From&lt;TQuery&gt; to registered sources or falls back to a full table scan for AllOf&lt;T&gt;. Supports LinqQuery&lt;T&gt; for SQL-level scope pushdown.</summary>
+/// <summary>Dispatches From&lt;TQuery&gt; to registered sources or falls back to a full table scan for IAllOf. Supports ILinqQuery for SQL-level pushdown.</summary>
 public sealed class PostgresAggregateSource<T>(
-    ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> sources,
+    IReadOnlyDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> sources,
     IMemory memory,
     IDocumentSession session)
     : IAggregateSource<T>
 {
     public IAsyncEnumerable<T> From<TQuery>(TQuery query)
-        => query is AllOf<T>
+        => query is IAllOf<T>
             ? session.Query<T>().ToAsyncEnumerable()
-        : query is LinqQuery<T> lq
-            ? session.Query<T>().Where(lq.Predicate).ToAsyncEnumerable()
+        : query is ILinqQuery<T> lq
+            ? session.Query<T>().Where(lq.Predicate()).ToAsyncEnumerable()
         : sources.TryGetValue(typeof(TQuery), out var source)
             ? source(query!, memory, session)
             : throw new InvalidOperationException(

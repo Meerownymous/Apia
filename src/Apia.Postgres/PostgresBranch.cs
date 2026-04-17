@@ -18,13 +18,13 @@ public sealed class PostgresBranch(
 {
     public IAggregateSource<T> Aggregate<T>()
         => new PostgresAggregateSource<T>(
-            Registry<T, PostgresAggregateRegistry<T>>(aggregateRegistries).Sources(),
+            AggregateRegistry<T>().Sources(),
             memory,
             session);
 
     public IProjectionSource<T> Projection<T>()
         => new PostgresProjectionSource<T>(
-            Registry<T, PostgresProjectionRegistry<T>>(projectionRegistries).Sources(),
+            ProjectionRegistry<T>().Sources(),
             memory,
             session);
 
@@ -40,9 +40,13 @@ public sealed class PostgresBranch(
 
     public Task Commit() => session.SaveChangesAsync();
 
-    private static TRegistry Registry<T, TRegistry>(ConcurrentDictionary<Type, object> registries)
-        where TRegistry : new()
-        => registries.TryGetValue(typeof(T), out var r)
-            ? (TRegistry)r
-            : new TRegistry();
+    private IAggregateRegistry<T> AggregateRegistry<T>()
+        => aggregateRegistries.TryGetValue(typeof(T), out var r)
+            ? (IAggregateRegistry<T>)r
+            : new PostgresAggregateRegistry<T>();
+
+    private IProjectionRegistry<T> ProjectionRegistry<T>()
+        => projectionRegistries.TryGetValue(typeof(T), out var r)
+            ? (IProjectionRegistry<T>)r
+            : new PostgresProjectionRegistry<T>();
 }

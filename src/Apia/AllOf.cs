@@ -1,4 +1,7 @@
 namespace Apia;
 
-/// <summary>Built-in query that streams all stored entities of type T.</summary>
-public sealed record AllOf<T>;
+/// <summary>A query that selects all stored entities of type T.</summary>
+public sealed class AllOf<T> : IAllOf<T>
+{
+    public Type EntityType() => typeof(T);
+}

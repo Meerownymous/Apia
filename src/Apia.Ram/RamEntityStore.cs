@@ -4,19 +4,32 @@ using Apia;
 
 namespace Apia.Ram;
 
-/// <summary>Thread-safe in-memory store for a single entity type, keyed by Guid.</summary>
-internal sealed class RamEntityStore<T>(IIdentity<T> identity)
+/// <summary>Thread-safe in-memory store for entities of type T, keyed by Guid.</summary>
+public sealed class RamEntityStore<T>(IIdentity<T> identity) : IEntityStore<T>
 {
     private readonly ConcurrentDictionary<Guid, T> store = new();
 
-    public OneOf<T, NotFound> Get(Guid id)
-        => store.TryGetValue(id, out var entity)
-            ? OneOf<T, NotFound>.FromT0(entity!)
-            : new NotFound();
+    public Task<OneOf<T, NotFound>> Get(Guid id)
+        => Task.FromResult(
+            store.TryGetValue(id, out var entity)
+                ? OneOf<T, NotFound>.FromT0(entity!)
+                : new NotFound());
 
-    public void Set(T entity) => store[identity.Of(entity)] = entity;
+    public async IAsyncEnumerable<T> All()
+    {
+        foreach (var entity in store.Values)
+            yield return entity;
+    }
 
-    public void Remove(Guid id) => store.TryRemove(id, out _);
+    public Task Set(T entity)
+    {
+        store[identity.Of(entity)] = entity;
+        return Task.CompletedTask;
+    }
 
-    public IEnumerable<T> All() => store.Values;
+    public Task Remove(Guid id)
+    {
+        store.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
 }

@@ -4,8 +4,8 @@ using Apia;
 
 namespace Apia.File;
 
-/// <summary>File-backed entity store. Persists as {TypeName}.json in the given directory.</summary>
-internal sealed class FileEntityStore<T>(string directory, IIdentity<T> identity)
+/// <summary>File-backed entity store. Persists entities as JSON in a single file per type.</summary>
+public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) : IEntityStore<T>
 {
     private readonly string path = Path.Combine(directory, $"{typeof(T).Name}.json");
     private readonly SemaphoreSlim fileLock = new(1, 1);
@@ -19,7 +19,11 @@ internal sealed class FileEntityStore<T>(string directory, IIdentity<T> identity
             : new NotFound();
     }
 
-    public async Task<IEnumerable<T>> All() => (await Read()).Values;
+    public async IAsyncEnumerable<T> All()
+    {
+        foreach (var entity in (await Read()).Values)
+            yield return entity;
+    }
 
     public async Task Set(T entity)
     {

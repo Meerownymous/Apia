@@ -12,7 +12,7 @@ public sealed class RamBranch(
     ConcurrentDictionary<Type, object> projectionSources)
     : IBranch
 {
-    private readonly List<Action> staged = new();
+    private readonly List<Func<Task>> staged = new();
 
     public IAggregateSource<T> Aggregate<T>()
         => aggregateSources.TryGetValue(typeof(T), out var src)
@@ -36,16 +36,15 @@ public sealed class RamBranch(
         return Task.CompletedTask;
     }
 
-    public Task Commit()
+    public async Task Commit()
     {
         foreach (var op in staged)
-            op();
+            await op();
         staged.Clear();
-        return Task.CompletedTask;
     }
 
-    private RamEntityStore<T> Store<T>()
+    private IEntityStore<T> Store<T>()
         => stores.TryGetValue(typeof(T), out var store)
-            ? (RamEntityStore<T>)store
+            ? (IEntityStore<T>)store
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 }

@@ -22,7 +22,7 @@ public sealed class FileMemory(
 
     public IVault<T> Vault<T>()
         => stores.TryGetValue(typeof(T), out var store)
-            ? new FileVault<T>((FileEntityStore<T>)store)
+            ? new FileVault<T>((IEntityStore<T>)store)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
     public IBranch Branch() => new FileBranch(stores, aggregateSources, projectionSources);

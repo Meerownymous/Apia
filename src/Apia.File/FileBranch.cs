@@ -41,8 +41,8 @@ public sealed class FileBranch(
         staged.Clear();
     }
 
-    private FileEntityStore<T> Store<T>()
+    private IEntityStore<T> Store<T>()
         => stores.TryGetValue(typeof(T), out var store)
-            ? (FileEntityStore<T>)store
+            ? (IEntityStore<T>)store
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 }

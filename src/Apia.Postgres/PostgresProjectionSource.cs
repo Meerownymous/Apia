@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Apia;
 using Marten;
 
@@ -6,7 +5,7 @@ namespace Apia.Postgres;
 
 /// <summary>Dispatches From&lt;TQuery&gt; to registered single-result sources.</summary>
 public sealed class PostgresProjectionSource<T>(
-    ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> sources,
+    IReadOnlyDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> sources,
     IMemory memory,
     IDocumentSession session)
     : IProjectionSource<T>

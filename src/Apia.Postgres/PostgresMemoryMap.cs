@@ -9,7 +9,7 @@ namespace Apia.Postgres;
 /// Compose a Postgres-backed IMemory via Marten.
 /// A type may be registered as vault, aggregate, and/or projection; only vault types are writable via IBranch.
 /// </summary>
-public sealed class PostgresMemoryMap : IPostgresMemoryMap
+public sealed class PostgresMemoryMap : IMemoryMap
 {
     private readonly IDocumentStore store;
     private readonly ConcurrentDictionary<Type, object> vaultTypes           = new();
@@ -37,26 +37,14 @@ public sealed class PostgresMemoryMap : IPostgresMemoryMap
 
     public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull
     {
-        var reg = (PostgresAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
+        var reg = (IAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
         reg.Register<TQuery>((q, m, _) => source.From(q, m));
-    }
-
-    public void RegisterQuery<T, TQuery>(Func<TQuery, IMemory, IDocumentSession, IAsyncEnumerable<T>> source) where T : notnull
-    {
-        var reg = (PostgresAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
-        reg.Register<TQuery>(source);
     }
 
     public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
     {
-        var reg = (PostgresProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
+        var reg = (IProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
         reg.Register<TQuery>((q, m, _) => source.From(q, m));
-    }
-
-    public void RegisterProjection<T, TQuery>(Func<TQuery, IMemory, IDocumentSession, Task<T>> source) where T : notnull
-    {
-        var reg = (PostgresProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
-        reg.Register<TQuery>(source);
     }
 
     public IMemory Build() => new PostgresMemory(store, vaultTypes, aggregateRegistries, projectionRegistries);
