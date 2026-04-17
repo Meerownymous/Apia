@@ -13,13 +13,13 @@ public sealed class PostgresMemory(
 {
     public IAggregateSource<T> Aggregate<T>()
         => new PostgresAggregateSource<T>(
-            Registry<T, PostgresAggregateRegistry<T>>(aggregateRegistries).Handlers(),
+            Registry<T, PostgresAggregateRegistry<T>>(aggregateRegistries).Sources(),
             this,
             store.QuerySession());
 
     public IProjectionSource<T> Projection<T>()
         => new PostgresProjectionSource<T>(
-            Registry<T, PostgresProjectionRegistry<T>>(projectionRegistries).Handlers(),
+            Registry<T, PostgresProjectionRegistry<T>>(projectionRegistries).Sources(),
             this,
             store.QuerySession());
 

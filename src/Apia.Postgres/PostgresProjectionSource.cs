@@ -9,16 +9,16 @@ public interface IPostgresProjectionSource<T, TQuery>
     Task<T> From(TQuery query, IMemory memory, IDocumentSession session);
 }
 
-/// <summary>Dispatches From&lt;TQuery&gt; to registered single-result handlers.</summary>
+/// <summary>Dispatches From&lt;TQuery&gt; to registered single-result sources.</summary>
 public sealed class PostgresProjectionSource<T>(
-    ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> handlers,
+    ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> sources,
     IMemory memory,
     IDocumentSession session)
     : IProjectionSource<T>
 {
     public Task<T> From<TQuery>(TQuery query)
-        => handlers.TryGetValue(typeof(TQuery), out var handler)
-            ? handler(query!, memory, session)
+        => sources.TryGetValue(typeof(TQuery), out var source)
+            ? source(query!, memory, session)
             : throw new InvalidOperationException(
-                $"No projection handler registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
+                $"No source registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
 }

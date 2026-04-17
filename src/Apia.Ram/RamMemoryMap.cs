@@ -3,90 +3,68 @@ using Apia;
 
 namespace Apia.Ram;
 
-/// <summary>Compose an in-memory IMemory. Register stores, query handlers, and projection handlers, then Build().</summary>
+/// <summary>Compose an in-memory IMemory. Each type is registered as exactly one of: vault, aggregate, or projection.</summary>
 public sealed class RamMemoryMap : IMemoryMap
 {
-    private readonly ConcurrentDictionary<Type, object> stores = new();
-    private readonly ConcurrentDictionary<Type, object> aggregateRegistries = new();
-    private readonly ConcurrentDictionary<Type, object> projectionRegistries = new();
+    private readonly ConcurrentDictionary<Type, object> stores           = new();
+    private readonly ConcurrentDictionary<Type, object> aggregateQueryMaps  = new();
+    private readonly ConcurrentDictionary<Type, object> projectionQueryMaps = new();
+    private readonly List<Action<IMemory, ConcurrentDictionary<Type, object>, ConcurrentDictionary<Type, object>>> buildSteps = new();
 
-    public void RegisterStore<T>(Func<T, Guid> idOf) where T : notnull
+    public void RegisterStore<T>(IIdentity<T> identity) where T : notnull
     {
-        stores[typeof(T)] = new RamEntityStore<T>(idOf);
-        aggregateRegistries.TryAdd(typeof(T), new AggregateRegistry<T>());
-        projectionRegistries.TryAdd(typeof(T), new ProjectionRegistry<T>());
+        GuardRole<T>("vault");
+        var store = new RamEntityStore<T>(identity);
+        stores[typeof(T)] = store;
+        buildSteps.Add((memory, aggSources, _) =>
+            aggSources[typeof(T)] = new RamAggregateSource<T>(store, new(), memory));
     }
 
     public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull
     {
-        var registry = (AggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new AggregateRegistry<T>());
-        registry.Register<TQuery>((q, m) => source.From(q, m));
+        GuardRole<T>("aggregate");
+        var queries = (ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>)
+            aggregateQueryMaps.GetOrAdd(typeof(T), _ => new ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>());
+        var first = queries.IsEmpty;
+        queries[typeof(TQuery)] = (q, m) => source.From((TQuery)q, m);
+        if (first)
+            buildSteps.Add((memory, aggSources, _) =>
+                aggSources[typeof(T)] = new RamAggregateSource<T>(null, queries, memory));
     }
 
     public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
     {
-        var registry = (ProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new ProjectionRegistry<T>());
-        registry.Register<TQuery>((q, m) => source.From(q, m));
+        GuardRole<T>("projection");
+        var queries = (ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>>)
+            projectionQueryMaps.GetOrAdd(typeof(T), _ => new ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>>());
+        var first = queries.IsEmpty;
+        queries[typeof(TQuery)] = (q, m) => source.From((TQuery)q, m);
+        if (first)
+            buildSteps.Add((memory, _, projSources) =>
+                projSources[typeof(T)] = new RamProjectionSource<T>(queries, memory));
     }
 
     public IMemory Build()
     {
-        var aggregateSources  = new ConcurrentDictionary<Type, object>();
-        var projectionSources = new ConcurrentDictionary<Type, object>();
-
-        var memory = new RamMemory(stores, aggregateSources, projectionSources);
-
-        foreach (var (type, store) in stores)
-            BuildForType(type, store, aggregateSources, projectionSources, memory);
-
+        var aggSources  = new ConcurrentDictionary<Type, object>();
+        var projSources = new ConcurrentDictionary<Type, object>();
+        var memory = new RamMemory(stores, aggSources, projSources);
+        foreach (var step in buildSteps)
+            step(memory, aggSources, projSources);
         return memory;
     }
 
-    private void BuildForType(
-        Type type,
-        object store,
-        ConcurrentDictionary<Type, object> aggregateSources,
-        ConcurrentDictionary<Type, object> projectionSources,
-        IMemory memory)
+    private string? RoleOf(Type type)
+        => stores.ContainsKey(type) ? "vault"
+            : aggregateQueryMaps.ContainsKey(type) ? "aggregate"
+            : projectionQueryMaps.ContainsKey(type) ? "projection"
+            : null;
+
+    private void GuardRole<T>(string role)
     {
-        var method = typeof(RamMemoryMap)
-            .GetMethod(nameof(BuildForTyped), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
-            .MakeGenericMethod(type);
-        method.Invoke(this, [store, aggregateSources, projectionSources, memory]);
-    }
-
-    private void BuildForTyped<T>(
-        RamEntityStore<T> store,
-        ConcurrentDictionary<Type, object> aggregateSources,
-        ConcurrentDictionary<Type, object> projectionSources,
-        IMemory memory)
-    {
-        var aggRegistry  = aggregateRegistries.TryGetValue(typeof(T), out var ar)
-            ? (AggregateRegistry<T>)ar : new AggregateRegistry<T>();
-        var projRegistry = projectionRegistries.TryGetValue(typeof(T), out var pr)
-            ? (ProjectionRegistry<T>)pr : new ProjectionRegistry<T>();
-
-        aggregateSources[typeof(T)]  = new RamAggregateSource<T>(store, aggRegistry.Handlers(), memory);
-        projectionSources[typeof(T)] = new RamProjectionSource<T>(projRegistry.Handlers(), memory);
-    }
-
-    private sealed class AggregateRegistry<T>
-    {
-        private readonly ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> handlers = new();
-
-        public void Register<TQuery>(Func<TQuery, IMemory, IAsyncEnumerable<T>> handler)
-            => handlers[typeof(TQuery)] = (q, m) => handler((TQuery)q, m);
-
-        public ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> Handlers() => handlers;
-    }
-
-    private sealed class ProjectionRegistry<T>
-    {
-        private readonly ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>> handlers = new();
-
-        public void Register<TQuery>(Func<TQuery, IMemory, Task<T>> handler)
-            => handlers[typeof(TQuery)] = (q, m) => handler((TQuery)q, m);
-
-        public ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>> Handlers() => handlers;
+        var existing = RoleOf(typeof(T));
+        if (existing != null && existing != role)
+            throw new InvalidOperationException(
+                $"{typeof(T).Name} is already registered as {existing} and cannot also be registered as {role}.");
     }
 }

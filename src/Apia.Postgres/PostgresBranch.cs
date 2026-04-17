@@ -16,13 +16,13 @@ public sealed class PostgresBranch(
 {
     public IAggregateSource<T> Aggregate<T>()
         => new PostgresAggregateSource<T>(
-            Registry<T, PostgresAggregateRegistry<T>>(aggregateRegistries).Handlers(),
+            Registry<T, PostgresAggregateRegistry<T>>(aggregateRegistries).Sources(),
             memory,
             session);
 
     public IProjectionSource<T> Projection<T>()
         => new PostgresProjectionSource<T>(
-            Registry<T, PostgresProjectionRegistry<T>>(projectionRegistries).Handlers(),
+            Registry<T, PostgresProjectionRegistry<T>>(projectionRegistries).Sources(),
             memory,
             session);
 

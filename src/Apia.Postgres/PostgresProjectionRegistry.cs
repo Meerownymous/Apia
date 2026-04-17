@@ -6,11 +6,11 @@ namespace Apia.Postgres;
 
 public sealed class PostgresProjectionRegistry<T>
 {
-    private readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> handlers = new();
+    private readonly ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> sources = new();
 
-    public void Register<TQuery>(Func<TQuery, IMemory, IDocumentSession, Task<T>> handler)
-        => handlers[typeof(TQuery)] = (q, m, s) => handler((TQuery)q, m, s);
+    public void Register<TQuery>(Func<TQuery, IMemory, IDocumentSession, Task<T>> source)
+        => sources[typeof(TQuery)] = (q, m, s) => source((TQuery)q, m, s);
 
-    public ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> Handlers()
-        => handlers;
+    public ConcurrentDictionary<Type, Func<object, IMemory, IDocumentSession, Task<T>>> Sources()
+        => sources;
 }

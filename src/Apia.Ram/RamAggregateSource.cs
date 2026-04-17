@@ -4,26 +4,30 @@ using Apia;
 namespace Apia.Ram;
 
 /// <summary>
-/// Dispatches <c>From&lt;TQuery&gt;</c> to registered handlers. Always handles
-/// <see cref="AllOf{T}"/> by streaming every entity in the store.
+/// Dispatches <c>From&lt;TQuery&gt;</c> to registered sources.
+/// Vault types pass a non-null store to support <see cref="AllOf{T}"/>;
+/// aggregate types pass null and only support registered query sources.
 /// </summary>
 public sealed class RamAggregateSource<T>(
-    RamEntityStore<T> store,
-    ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> handlers,
+    RamEntityStore<T>? store,
+    ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> sources,
     IMemory memory)
     : IAggregateSource<T>
 {
     public IAsyncEnumerable<T> From<TQuery>(TQuery query)
         => query is AllOf<T>
-            ? All()
-            : handlers.TryGetValue(typeof(TQuery), out var handler)
-                ? handler(query!, memory)
+            ? store != null
+                ? All()
                 : throw new InvalidOperationException(
-                    $"No aggregate handler registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
+                    $"{typeof(T).Name} is an aggregate type and does not support AllOf.")
+            : sources.TryGetValue(typeof(TQuery), out var source)
+                ? source(query!, memory)
+                : throw new InvalidOperationException(
+                    $"No source registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
 
     private async IAsyncEnumerable<T> All()
     {
-        foreach (var entity in store.All())
+        foreach (var entity in store!.All())
             yield return await Task.FromResult(entity);
     }
 }

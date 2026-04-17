@@ -10,9 +10,9 @@ public sealed class UserFeedProjectionTests
     private static async Task<(IMemory memory, PostRecord post, UserRecord user1)> BuildFeedMemory()
     {
         var map = new RamMemoryMap();
-        map.RegisterStore<UserRecord>(u => u.UserId);
-        map.RegisterStore<PostRecord>(p => p.PostId);
-        map.RegisterStore<CommentRecord>(c => c.CommentId);
+        map.RegisterStore(new UserRecordId());
+        map.RegisterStore(new PostRecordId());
+        map.RegisterStore(new CommentRecordId());
         map.RegisterQuery(new UserFeedProjection());
         var memory = map.Build();
 
@@ -83,9 +83,9 @@ public sealed class UserFeedProjectionTests
     public async Task ReturnsEmpty_WhenUserHasNoPosts()
     {
         var map = new RamMemoryMap();
-        map.RegisterStore<UserRecord>(u => u.UserId);
-        map.RegisterStore<PostRecord>(p => p.PostId);
-        map.RegisterStore<CommentRecord>(c => c.CommentId);
+        map.RegisterStore(new UserRecordId());
+        map.RegisterStore(new PostRecordId());
+        map.RegisterStore(new CommentRecordId());
         map.RegisterQuery(new UserFeedProjection());
         var memory = map.Build();
 
@@ -105,9 +105,9 @@ public sealed class UserFeedProjectionTests
     public async Task ReturnsEmpty_WhenUserNotFound()
     {
         var map = new RamMemoryMap();
-        map.RegisterStore<UserRecord>(u => u.UserId);
-        map.RegisterStore<PostRecord>(p => p.PostId);
-        map.RegisterStore<CommentRecord>(c => c.CommentId);
+        map.RegisterStore(new UserRecordId());
+        map.RegisterStore(new PostRecordId());
+        map.RegisterStore(new CommentRecordId());
         map.RegisterQuery(new UserFeedProjection());
         var memory = map.Build();
 
