@@ -112,6 +112,6 @@ public sealed class BranchVaultTests
         await branch.Save(user1);
         await branch.Save(user2);
         await branch.Commit();
-        Assert.Equal(2, (await memory.Aggregate<UserRecord>(new AllOf<UserRecord>()).ToListAsync()).Count);
+        Assert.Equal(2, (await memory.Aggregate(new AllOf<UserRecord>()).ToListAsync()).Count);
     }
 }

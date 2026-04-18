@@ -12,15 +12,15 @@ public sealed class FileBranch(
 {
     private readonly List<Func<Task>> staged = new();
 
-    public IAsyncEnumerable<T> Aggregate<T>(object query)
-        => aggregateSources.TryGetValue(typeof(T), out var src)
-            ? ((IAggregateSource<T>)src).From(query)
-            : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
+    public IAsyncEnumerable<TAggregated> Aggregate<TAggregated, TQuery>(IQuery<TQuery, TAggregated> query)
+        => aggregateSources.TryGetValue(typeof(TAggregated), out var src)
+            ? ((IAggregateSource<TAggregated>)src).From<TQuery>(query)
+            : throw new InvalidOperationException($"No store registered for {typeof(TAggregated).Name}.");
 
-    public Task<T> Projection<T>(object query)
-        => projectionSources.TryGetValue(typeof(T), out var src)
-            ? ((IProjectionSource<T>)src).From(query)
-            : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
+    public Task<TAggregated> Projection<TAggregated, TQuery>(IQuery<TQuery, TAggregated> query)
+        => projectionSources.TryGetValue(typeof(TAggregated), out var src)
+            ? ((IProjectionSource<TAggregated>)src).From<TQuery>(query)
+            : throw new InvalidOperationException($"No store registered for {typeof(TAggregated).Name}.");
 
     public Task Save<T>(T entity)
     {

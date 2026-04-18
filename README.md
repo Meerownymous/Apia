@@ -21,8 +21,8 @@ All three are accessed through `IMemory`. Use cases receive `IMemory` as a depen
 ```csharp
 public interface IMemory
 {
-    IAsyncEnumerable<T> Aggregate<T>(object query);
-    Task<T> Projection<T>(object query);
+    IAsyncEnumerable<T> Aggregate<T>(IQuery query);
+    Task<T> Projection<T>(IQuery query);
     IVault<T> Vault<T>();
     IBranch Branch();
 }
@@ -113,8 +113,8 @@ Mutations go through `IBranch`. A branch stages `Save` and `Delete` operations a
 ```csharp
 public interface IBranch
 {
-    IAsyncEnumerable<T> Aggregate<T>(object query);
-    Task<T> Projection<T>(object query);
+    IAsyncEnumerable<T> Aggregate<T>(IQuery query);
+    Task<T> Projection<T>(IQuery query);
 
     Task Save<T>(T entity);
     Task Delete<T>(Guid id);

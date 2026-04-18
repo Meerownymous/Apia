@@ -24,7 +24,7 @@ public sealed class ScopeMemoryTests
         Assert.Equal(
             post1,
             (await new ScopeMemory<Guid>(inner, new ScopeBuilder<Guid>().Register<PostRecord>(new AuthorScope()).Build(), author1)
-                .Aggregate<PostRecord>(new AllOf<PostRecord>())
+                .Aggregate(new AllOf<PostRecord>())
                 .ToListAsync())
             .Single());
     }
@@ -44,7 +44,7 @@ public sealed class ScopeMemoryTests
         Assert.Equal(
             2,
             (await new ScopeMemory<Guid>(inner, new ScopeBuilder<Guid>().Register<PostRecord>(new AuthorScope()).Build(), author)
-                .Aggregate<PostRecord>(new AllOf<PostRecord>())
+                .Aggregate(new AllOf<PostRecord>())
                 .ToListAsync())
             .Count);
     }
@@ -83,7 +83,7 @@ public sealed class ScopeMemoryTests
         Assert.Equal(
             post1,
             (await new ScopeMemory<Guid>(inner, new ScopeBuilder<Guid>().Register<PostRecord>(new AuthorLinqScope()).Build(), author1)
-                .Aggregate<PostRecord>(new AllOf<PostRecord>())
+                .Aggregate(new AllOf<PostRecord>())
                 .ToListAsync())
             .Single());
     }

@@ -12,17 +12,17 @@ public sealed class PostgresMemory(
     ConcurrentDictionary<Type, object> projectionRegistries)
     : IMemory
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query)
-        => new PostgresAggregateSource<T>(
-            AggregateRegistry<T>().Sources(),
+    public IAsyncEnumerable<TAggregated> Aggregate<TAggregated, TQuery>(IQuery<TQuery, TAggregated> query)
+        => new PostgresAggregateSource<TAggregated>(
+            AggregateRegistry<TAggregated>().Sources(),
             this,
-            store.QuerySession()).From(query);
+            store.QuerySession()).From<TQuery>(query);
 
-    public Task<T> Projection<T>(object query)
-        => new PostgresProjectionSource<T>(
-            ProjectionRegistry<T>().Sources(),
+    public Task<TAggregated> Projection<TAggregated, TQuery>(IQuery<TQuery, TAggregated> query)
+        => new PostgresProjectionSource<TAggregated>(
+            ProjectionRegistry<TAggregated>().Sources(),
             this,
-            store.QuerySession()).From(query);
+            store.QuerySession()).From<TQuery>(query);
 
     public IVault<T> Vault<T>() => new PostgresVault<T>(store);
 

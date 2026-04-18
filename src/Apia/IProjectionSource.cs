@@ -1,13 +1,15 @@
 namespace Apia;
 
-/// <summary>Returns exactly one computed result for a query. No identity, no mutation.</summary>
+/// <summary>Returns exactly one computed result for any query producing a value of type <typeparamref name="T"/>.</summary>
 public interface IProjectionSource<T>
 {
-    Task<T> From(object query);
+    /// <summary>Returns a single computed result for the given query.</summary>
+    Task<T> From<TQuery>(IQuery<TQuery, T> query);
 }
 
-/// <summary>Returns exactly one computed result for a typed query carrying a seed of type TQuery.</summary>
-public interface IProjectionSource<T, TQuery>
+/// <summary>Returns exactly one computed result for a specific query type <typeparamref name="TQuery"/>.</summary>
+public interface IProjectionSource<T, in TQuery> where TQuery : IQuery<TQuery, T>
 {
-    Task<T> From(IQuery<TQuery> query, IMemory memory);
+    /// <summary>Returns a single computed result for the given typed query.</summary>
+    Task<T> From(TQuery query, IMemory memory);
 }

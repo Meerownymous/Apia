@@ -10,9 +10,9 @@ public sealed class PostgresProjectionSource<T>(
     IQuerySession session)
     : IProjectionSource<T>
 {
-    public Task<T> From(object query)
-        => sources.TryGetValue(query.GetType(), out var source)
+    public Task<T> From<TQuery>(IQuery<TQuery, T> query)
+        => sources.TryGetValue(typeof(TQuery), out var source)
             ? source(query, memory, session)
             : throw new InvalidOperationException(
-                $"No source registered for {query.GetType().Name} → {typeof(T).Name}.");
+                $"No source registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
 }
