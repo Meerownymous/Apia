@@ -1,9 +1,9 @@
 namespace Apia;
 
-/// <summary>Streams multiple results for a given query.</summary>
+/// <summary>Streams multiple results for a query.</summary>
 public interface IAggregateSource<T>
 {
-    IAsyncEnumerable<T> From<TQuery>(TQuery query);
+    IAsyncEnumerable<T> From(object query);
 }
 
 /// <summary>Streams multiple results for a typed query carrying a seed of type TQuery.</summary>

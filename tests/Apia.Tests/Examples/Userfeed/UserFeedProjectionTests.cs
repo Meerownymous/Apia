@@ -26,7 +26,7 @@ public sealed class UserFeedProjectionTests
         await branch.Save(new CommentRecord(Guid.NewGuid(), post.PostId, user2.UserId, "My cat's breath smells like cat food", DateTime.Now));
         await branch.Commit();
 
-        Assert.Single(await memory.Aggregate<UserPostSummaryView>().From(new UserFeedQuery(user1.UserId, Limit: 20)).ToListAsync());
+        Assert.Single(await memory.Aggregate<UserPostSummaryView>(new UserFeedQuery(user1.UserId, Limit: 20)).ToListAsync());
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public sealed class UserFeedProjectionTests
         await branch.Save(new CommentRecord(Guid.NewGuid(), post.PostId, user2.UserId, "My cat's breath smells like cat food", DateTime.Now));
         await branch.Commit();
 
-        Assert.Equal(post.PostId, (await memory.Aggregate<UserPostSummaryView>().From(new UserFeedQuery(user1.UserId, Limit: 20)).ToListAsync())[0].PostId);
+        Assert.Equal(post.PostId, (await memory.Aggregate<UserPostSummaryView>(new UserFeedQuery(user1.UserId, Limit: 20)).ToListAsync())[0].PostId);
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public sealed class UserFeedProjectionTests
         await branch.Save(new CommentRecord(Guid.NewGuid(), post.PostId, user2.UserId, "My cat's breath smells like cat food", DateTime.Now));
         await branch.Commit();
 
-        Assert.Equal(user1.Username, (await memory.Aggregate<UserPostSummaryView>().From(new UserFeedQuery(user1.UserId, Limit: 20)).ToListAsync())[0].AuthorName);
+        Assert.Equal(user1.Username, (await memory.Aggregate<UserPostSummaryView>(new UserFeedQuery(user1.UserId, Limit: 20)).ToListAsync())[0].AuthorName);
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public sealed class UserFeedProjectionTests
         await branch.Save(new CommentRecord(Guid.NewGuid(), post.PostId, user2.UserId, "My cat's breath smells like cat food", DateTime.Now));
         await branch.Commit();
 
-        Assert.Equal(1, (await memory.Aggregate<UserPostSummaryView>().From(new UserFeedQuery(user1.UserId, Limit: 20)).ToListAsync())[0].CommentCount);
+        Assert.Equal(1, (await memory.Aggregate<UserPostSummaryView>(new UserFeedQuery(user1.UserId, Limit: 20)).ToListAsync())[0].CommentCount);
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public sealed class UserFeedProjectionTests
         await branch.Save(user);
         await branch.Commit();
 
-        Assert.Empty(await memory.Aggregate<UserPostSummaryView>().From(new UserFeedQuery(user.UserId, Limit: 20)).ToListAsync());
+        Assert.Empty(await memory.Aggregate<UserPostSummaryView>(new UserFeedQuery(user.UserId, Limit: 20)).ToListAsync());
     }
 
     [Fact]
@@ -122,6 +122,6 @@ public sealed class UserFeedProjectionTests
         map.RegisterQuery(new UserFeedProjection());
         var memory = map.Build();
 
-        Assert.Empty(await memory.Aggregate<UserPostSummaryView>().From(new UserFeedQuery(Guid.NewGuid(), Limit: 20)).ToListAsync());
+        Assert.Empty(await memory.Aggregate<UserPostSummaryView>(new UserFeedQuery(Guid.NewGuid(), Limit: 20)).ToListAsync());
     }
 }

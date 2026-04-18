@@ -16,17 +16,17 @@ public sealed class PostgresBranch(
     ConcurrentDictionary<Type, object> projectionRegistries)
     : IBranch
 {
-    public IAggregateSource<T> Aggregate<T>()
+    public IAsyncEnumerable<T> Aggregate<T>(object query)
         => new PostgresAggregateSource<T>(
             AggregateRegistry<T>().Sources(),
             memory,
-            session);
+            session).From(query);
 
-    public IProjectionSource<T> Projection<T>()
+    public Task<T> Projection<T>(object query)
         => new PostgresProjectionSource<T>(
             ProjectionRegistry<T>().Sources(),
             memory,
-            session);
+            session).From(query);
 
     public Task Save<T>(T entity) where T : notnull => vaultTypes.ContainsKey(typeof(T))
             ? Task.FromResult(() => session.Store(entity))

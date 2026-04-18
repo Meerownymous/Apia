@@ -8,21 +8,21 @@ A storage abstraction library for .NET 9. Apia gives use cases a single interfac
 
 Business logic should not be coupled to storage infrastructure. A use case that posts to a user feed, registers a new account, or computes a report should be expressible in terms of records and queries — not SQL statements, file paths, or Cosmos DB change feeds.
 
-Apia provides three primitive storage concepts:
+Apia provides three read operations on `IMemory`:
 
-| Abstraction | What it models |
+| Method | What it does |
 |---|---|
-| `IAggregateSource<T>` | Streams multiple results for a query over entities of type `T` |
-| `IProjectionSource<T>` | Returns a single computed result for a query |
-| `IVault<T>` | Reads a single entity by `Guid` |
+| `Aggregate<T>(query)` | Streams multiple results for a query over entities of type `T` |
+| `Projection<T>(query)` | Returns a single computed result for a query |
+| `Vault<T>().Load(id)` | Reads a single entity by `Guid` |
 
 All three are accessed through `IMemory`. Use cases receive `IMemory` as a dependency and compose storage operations from it:
 
 ```csharp
 public interface IMemory
 {
-    IAggregateSource<T> Aggregate<T>();
-    IProjectionSource<T> Projection<T>();
+    IAsyncEnumerable<T> Aggregate<T>(object query);
+    Task<T> Projection<T>(object query);
     IVault<T> Vault<T>();
     IBranch Branch();
 }
@@ -78,15 +78,15 @@ The same use cases run against both.
 ### AllOf\<T\> — stream all entities
 
 ```csharp
-await foreach (var post in memory.Aggregate<PostRecord>().From(new AllOf<PostRecord>()))
+await foreach (var post in memory.Aggregate<PostRecord>(new AllOf<PostRecord>()))
     Console.WriteLine(post.Content);
 ```
 
 ### LinqQuery\<T\> — filter with a predicate
 
 ```csharp
-var userPosts = memory.Aggregate<PostRecord>()
-    .From(new LinqQuery<PostRecord>(p => p.AuthorId == userId));
+var userPosts = memory.Aggregate<PostRecord>(
+    new LinqQuery<PostRecord>(p => p.AuthorId == userId));
 ```
 
 SQL-capable backends translate the predicate to a `WHERE` clause; others compile and apply it in-process.
@@ -113,8 +113,8 @@ Mutations go through `IBranch`. A branch stages `Save` and `Delete` operations a
 ```csharp
 public interface IBranch
 {
-    IAggregateSource<T> Aggregate<T>();
-    IProjectionSource<T> Projection<T>();
+    IAsyncEnumerable<T> Aggregate<T>(object query);
+    Task<T> Projection<T>(object query);
 
     Task Save<T>(T entity);
     Task Delete<T>(Guid id);
@@ -137,7 +137,7 @@ public sealed class RegisterUserUseCase(IMemory memory)
 }
 ```
 
-Calling `Branch()` multiple times gives independent units of work. Each `Commit` is an atomic flush of its staged operations. `IBranch` also exposes `Aggregate` and `Projection` so reads and writes can be composed inside the same unit of work.
+Calling `Branch()` multiple times gives independent units of work. Each `Commit` is an atomic flush of its staged operations. `IBranch` also exposes `Aggregate` and `Projection` — pass a query to read within the same unit of work.
 
 ---
 
@@ -167,12 +167,12 @@ public sealed class UserFeedProjection : IAggregateSource<UserPostSummaryView, U
         if (author.IsT1) yield break;
 
         var userPosts = new List<PostRecord>();
-        await foreach (var post in memory.Aggregate<PostRecord>()
-                           .From(new LinqQuery<PostRecord>(p => p.AuthorId == q.UserId)))
+        await foreach (var post in memory.Aggregate<PostRecord>(
+                           new LinqQuery<PostRecord>(p => p.AuthorId == q.UserId)))
             userPosts.Add(post);
 
         var commentCounts = new Dictionary<Guid, int>();
-        await foreach (var comment in memory.Aggregate<CommentRecord>().From(new AllOf<CommentRecord>()))
+        await foreach (var comment in memory.Aggregate<CommentRecord>(new AllOf<CommentRecord>()))
             if (userPosts.Any(p => p.PostId == comment.PostId))
                 commentCounts[comment.PostId] = commentCounts.GetValueOrDefault(comment.PostId) + 1;
 
@@ -236,8 +236,7 @@ public async Task PostAppearsInFeed()
     await new CreatePostUseCase(memory).Execute(user.UserId, "Hello, world");
 
     var feed = await memory
-        .Aggregate<UserPostSummaryView>()
-        .From(new UserFeedQuery(user.UserId, Limit: 10))
+        .Aggregate<UserPostSummaryView>(new UserFeedQuery(user.UserId, Limit: 10))
         .ToListAsync();
 
     Assert.Single(feed);
@@ -257,12 +256,12 @@ Apia is designed for teams that want to ship quickly and optimize deliberately.
 
 **Stage 2 — targeted optimization.** When profiling reveals a bottleneck — an aggregate source that full-scans a collection, an entity store on a hot path — replace that specific registration with a specialized implementation. A Postgres-native aggregate source for a slow query; a custom `IEntityStore<T>` backed by Redis for a high-throughput catalog. Everything else stays unchanged.
 
-**Stage 3 — cross-cutting instrumentation.** Because every read goes through `IAggregateSource<T>`, `IProjectionSource<T>`, and `IVault<T>`, measuring decorators, caching layers, and audit logs can wrap any backend uniformly:
+**Stage 3 — cross-cutting instrumentation.** Because every read goes through `IMemory.Aggregate`, `IMemory.Projection`, and `IVault<T>`, measuring decorators, caching layers, and audit logs can wrap any backend uniformly:
 
 ```csharp
 public sealed class TimedAggregateSource<T>(IAggregateSource<T> inner, IMetrics metrics) : IAggregateSource<T>
 {
-    public IAsyncEnumerable<T> From<TQuery>(TQuery query)
+    public IAsyncEnumerable<T> From(object query)
     {
         using var _ = metrics.Time($"aggregate.{typeof(T).Name}");
         return inner.From(query);
@@ -270,7 +269,7 @@ public sealed class TimedAggregateSource<T>(IAggregateSource<T> inner, IMetrics 
 }
 ```
 
-The use cases that call `memory.Aggregate<T>()` do not know the decorator is there.
+The use cases that call `memory.Aggregate<T>(query)` do not know the decorator is there.
 
 ---
 
@@ -372,8 +371,7 @@ public sealed class AddCommentUseCase(IMemory memory)
 public sealed class GetUserFeedUseCase(IMemory memory)
 {
     public IAsyncEnumerable<UserPostSummaryView> Execute(Guid userId, int limit)
-        => memory.Aggregate<UserPostSummaryView>()
-                 .From(new UserFeedQuery(userId, limit));
+        => memory.Aggregate<UserPostSummaryView>(new UserFeedQuery(userId, limit));
 }
 ```
 

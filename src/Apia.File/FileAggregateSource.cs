@@ -5,9 +5,8 @@ using Apia;
 namespace Apia.File;
 
 /// <summary>
-/// Dispatches From&lt;TQuery&gt; to registered sources.
-/// Vault types pass a non-null store to support IAllOf and ILinqQuery;
-/// aggregate types pass null and only support registered query sources.
+/// Dispatches From to registered sources.
+/// Store types support AllOf and LinqQuery; aggregate-only types support registered query sources.
 /// </summary>
 public sealed class FileAggregateSource<T>(
     IEntityStore<T>? store,
@@ -15,7 +14,7 @@ public sealed class FileAggregateSource<T>(
     IMemory memory)
     : IAggregateSource<T>
 {
-    public IAsyncEnumerable<T> From<TQuery>(TQuery query)
+    public IAsyncEnumerable<T> From(object query)
         => query is IAllOf<T>
             ? store != null
                 ? store.All()
@@ -26,10 +25,10 @@ public sealed class FileAggregateSource<T>(
                 ? Filtered(lq.Seed().Compile())
                 : throw new InvalidOperationException(
                     $"{typeof(T).Name} is an aggregate type and does not support LinqQuery.")
-        : sources.TryGetValue(typeof(TQuery), out var source)
-            ? source(query!, memory)
+        : sources.TryGetValue(query.GetType(), out var source)
+            ? source(query, memory)
             : throw new InvalidOperationException(
-                $"No source registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
+                $"No source registered for {query.GetType().Name} → {typeof(T).Name}.");
 
     private async IAsyncEnumerable<T> Filtered(Func<T, bool> predicate)
     {

@@ -10,9 +10,9 @@ public sealed class PolicyMemory<TContext>(
     TContext context)
     : IMemory
 {
-    public IAggregateSource<T> Aggregate<T>() => inner.Aggregate<T>();
+    public IAsyncEnumerable<T> Aggregate<T>(object query) => inner.Aggregate<T>(query);
 
-    public IProjectionSource<T> Projection<T>() => inner.Projection<T>();
+    public Task<T> Projection<T>(object query) => inner.Projection<T>(query);
 
     public IVault<T> Vault<T>()
     {

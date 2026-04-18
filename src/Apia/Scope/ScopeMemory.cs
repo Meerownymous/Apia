@@ -12,15 +12,18 @@ public sealed class ScopeMemory<TFilter>(
     TFilter filter)
     : IMemory
 {
-    public IAggregateSource<T> Aggregate<T>()
+    public IAsyncEnumerable<T> Aggregate<T>(object query)
     {
-        var source = inner.Aggregate<T>();
-        return registry.HasScope<T>()
-            ? new ScopeFilteredAggregateSource<T, TFilter>(source, registry.ScopeFor<T>(), filter)
-            : source;
+        if (!registry.HasScope<T>())
+            return inner.Aggregate<T>(query);
+        return new ScopeFilteredAggregateSource<T, TFilter>(
+                q => inner.Aggregate<T>(q),
+                registry.ScopeFor<T>(),
+                filter)
+            .From(query);
     }
 
-    public IProjectionSource<T> Projection<T>() => inner.Projection<T>();
+    public Task<T> Projection<T>(object query) => inner.Projection<T>(query);
 
     public IVault<T> Vault<T>()
     {
