@@ -3,16 +3,16 @@ using Marten;
 
 namespace Apia.Postgres;
 
-/// <summary>Dispatches From&lt;TQuery&gt; to registered single-result sources.</summary>
+/// <summary>Dispatches From to registered single-result sources.</summary>
 public sealed class PostgresProjectionSource<T>(
     IReadOnlyDictionary<Type, Func<object, IMemory, IQuerySession, Task<T>>> sources,
     IMemory memory,
     IQuerySession session)
     : IProjectionSource<T>
 {
-    public Task<T> From<TQuery>(TQuery query)
-        => sources.TryGetValue(typeof(TQuery), out var source)
-            ? source(query!, memory, session)
+    public Task<T> From(object query)
+        => sources.TryGetValue(query.GetType(), out var source)
+            ? source(query, memory, session)
             : throw new InvalidOperationException(
-                $"No source registered for {typeof(TQuery).Name} → {typeof(T).Name}.");
+                $"No source registered for {query.GetType().Name} → {typeof(T).Name}.");
 }

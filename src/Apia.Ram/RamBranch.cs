@@ -14,14 +14,14 @@ public sealed class RamBranch(
 {
     private readonly List<Func<Task>> staged = new();
 
-    public IAggregateSource<T> Aggregate<T>()
+    public IAsyncEnumerable<T> Aggregate<T>(object query)
         => aggregateSources.TryGetValue(typeof(T), out var src)
-            ? (IAggregateSource<T>)src
+            ? ((IAggregateSource<T>)src).From(query)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
-    public IProjectionSource<T> Projection<T>()
+    public Task<T> Projection<T>(object query)
         => projectionSources.TryGetValue(typeof(T), out var src)
-            ? (IProjectionSource<T>)src
+            ? ((IProjectionSource<T>)src).From(query)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
     public Task Save<T>(T entity)

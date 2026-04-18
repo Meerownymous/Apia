@@ -2,8 +2,8 @@ namespace Apia;
 
 public interface IMemory
 {
-    IAggregateSource<T> Aggregate<T>();
-    IProjectionSource<T> Projection<T>();
+    IAsyncEnumerable<T> Aggregate<T>(object query);
+    Task<T> Projection<T>(object query);
     IVault<T> Vault<T>();
     IBranch Branch();
 }

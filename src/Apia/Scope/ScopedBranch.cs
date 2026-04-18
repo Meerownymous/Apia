@@ -11,9 +11,9 @@ public sealed class ScopedBranch<TFilter>(
     TFilter filter)
     : IBranch
 {
-    public IAggregateSource<T> Aggregate<T>() => inner.Aggregate<T>();
+    public IAsyncEnumerable<T> Aggregate<T>(object query) => inner.Aggregate<T>(query);
 
-    public IProjectionSource<T> Projection<T>() => inner.Projection<T>();
+    public Task<T> Projection<T>(object query) => inner.Projection<T>(query);
 
     public Task Save<T>(T entity)
         => !registry.HasScope<T>() || registry.ScopeFor<T>().CanWrite(entity, filter)
