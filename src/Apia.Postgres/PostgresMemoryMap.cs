@@ -39,13 +39,13 @@ public sealed class PostgresMemoryMap : IMemoryMap
     public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull
     {
         var reg = (IAggregateRegistry<T>)aggregateRegistries.GetOrAdd(typeof(T), _ => new PostgresAggregateRegistry<T>());
-        reg.Register<TQuery>((q, m, _) => source.From(q, m));
+        reg.Register<TQuery>((q, m, _) => source.From((IQuery<TQuery>)q, m));
     }
 
     public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
     {
         var reg = (IProjectionRegistry<T>)projectionRegistries.GetOrAdd(typeof(T), _ => new PostgresProjectionRegistry<T>());
-        reg.Register<TQuery>((q, m, _) => source.From(q, m));
+        reg.Register<TQuery>((q, m, _) => source.From((IQuery<TQuery>)q, m));
     }
 
     public IMemory Build() => new PostgresMemory(store, vaultTypes, aggregateRegistries, projectionRegistries);

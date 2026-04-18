@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq.Expressions;
 using Apia;
 
 namespace Apia.File;
@@ -20,9 +21,9 @@ public sealed class FileAggregateSource<T>(
                 ? store.All()
                 : throw new InvalidOperationException(
                     $"{typeof(T).Name} is an aggregate type and does not support AllOf.")
-        : query is ILinqQuery<T> lq
+        : query is IQuery<Expression<Func<T, bool>>> lq
             ? store != null
-                ? Filtered(lq.Predicate().Compile())
+                ? Filtered(lq.Seed().Compile())
                 : throw new InvalidOperationException(
                     $"{typeof(T).Name} is an aggregate type and does not support LinqQuery.")
         : sources.TryGetValue(typeof(TQuery), out var source)

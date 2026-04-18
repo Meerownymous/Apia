@@ -1,9 +1,7 @@
-using System.Linq.Expressions;
 using Apia;
 using Apia.Ram;
 using Apia.Scope;
 using Apia.Tests.Record;
-using OneOf;
 using Xunit;
 
 namespace Apia.Tests.Scope;
@@ -68,7 +66,7 @@ public sealed class ScopeMemoryTests
             (await new ScopeMemory<Guid>(inner, new ScopeBuilder<Guid>().Register<PostRecord>(new AuthorScope()).Build(), Guid.NewGuid())
                 .Vault<PostRecord>()
                 .Load(post.PostId))
-            .IsT1);
+            .Match(_ => false, _ => true));
     }
 
     [Fact]
@@ -91,18 +89,5 @@ public sealed class ScopeMemoryTests
                 .From(new AllOf<PostRecord>())
                 .ToListAsync())
             .Single());
-    }
-
-    private sealed record AuthorScope : IScope<PostRecord, Guid>
-    {
-        public bool Includes(PostRecord post, Guid authorId) => post.AuthorId == authorId;
-    }
-
-    private sealed record AuthorLinqScope : IScope<PostRecord, Guid>
-    {
-        public bool Includes(PostRecord post, Guid authorId) => post.AuthorId == authorId;
-
-        public OneOf<Expression<Func<PostRecord, bool>>, None> AsLinq(Guid authorId)
-            => (Expression<Func<PostRecord, bool>>)(p => p.AuthorId == authorId);
     }
 }
