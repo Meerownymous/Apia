@@ -1,0 +1,40 @@
+# Design Rules
+- No static classes
+- No public static methods, ever
+- No more than 5 methods per interface
+- No null, ever
+- No getters
+- No setters
+- No public or internal members
+- Small, composable objects
+- classes can only have public methods which are defined by the interface they implement
+- classes implement maximum of one interface
+- No interface inheritance
+- No internal classes, only allowed for in-class (nested) classes
+- No scope hacks by populating internal members or invoking functions across classes within the library
+- All interface methods are documented at the interface level
+- Naming is strict: objects are named by what they ARE, not what they DO
+- Names of methods that return something are nouns
+- Names of methods that perform actions are verbs
+- All classes are given a name that describes what they are/represent, not what they do (result oriented)
+- Names liker handler, producer, factory are to be avoided
+- No public internal classes that rely on protected method call scope hacks
+- internal modifiers are strictly forbidden
+- protected modifiers are strictly forbidden
+- Decorator pattern is favorited (composable objects)
+- No internal methods, classes, or members
+- Classes that do not implement interfaces are forbidden
+- Marker interfaces are forbidden
+- Reflection is forbidden, exception: type inspection
+- Public static methods that are not extensions are forbidde
+- Do not declare a variable when it is not used in more than one place, prefer combined objects and fluent calls, object and method names should always present the intent
+- Prefer breaking things up into private static methods, well named, over long hard to read code blocks
+- Prefer flat control flows over nested ones
+- Do not use NULL; do not use NULL as a marker. Null is only relevant when required by a third-party API, and then it must be eliminated as quickly as possible and replaced with other patterns.
+- Prefer OneOf with different outcomes to null
+- Avoid the OneOf.IsTo0...9 methods and prefer the Match method
+- Do not cast values to OneOf when not necessary (use implicit conversions)
+- Test classes have only methods that are tests, not more
+- Test classes have no private methods that are no tests
+- If records are needed for tests, place them in a seperate records folder in the test project
+- One Assert per test
