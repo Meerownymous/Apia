@@ -17,8 +17,9 @@ public sealed class BranchVaultTests
     [Fact]
     public async Task Vault_Load_ReturnsNotFound_WhenEmpty()
     {
-        var memory = BuildMemory();
-
+        var map = new RamMemoryMap();
+        map.RegisterStore(new UserRecordId());
+        var memory = map.Build();
         var result = await memory.Vault<UserRecord>().Load(Guid.NewGuid());
 
         Assert.True(result.IsT1);
