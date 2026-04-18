@@ -8,25 +8,29 @@ public sealed class UserFeedProjection : IAggregateSource<UserPostSummaryView, U
 {
     public async IAsyncEnumerable<UserPostSummaryView> From(IQuery<UserFeedQuery> query, IMemory memory)
     {
-        var q        = query.Seed();
-        var posts    = memory.Aggregate<PostRecord>();
-        var comments = memory.Aggregate<CommentRecord>();
-        var vault    = memory.Vault<UserRecord>();
+        var q = query.Seed();
+        await foreach (var view in
+            (await memory.Vault<UserRecord>().Load(q.UserId)).Match(
+                author => FeedViews(q, author, memory.Aggregate<PostRecord>(), memory.Aggregate<CommentRecord>()),
+                _ => AsyncEnumerable.Empty<UserPostSummaryView>()))
+            yield return view;
+    }
 
+    private static async IAsyncEnumerable<UserPostSummaryView> FeedViews(
+        UserFeedQuery q, UserRecord author,
+        IAggregateSource<PostRecord> posts,
+        IAggregateSource<CommentRecord> comments)
+    {
         var userPosts = new List<PostRecord>();
         await foreach (var post in posts.From(new AllOf<PostRecord>()))
             if (post.AuthorId == q.UserId)
                 userPosts.Add(post);
 
         var commentCounts = new Dictionary<Guid, int>();
-        var postIds       = userPosts.Select(p => p.PostId).ToHashSet();
+        var postIds = userPosts.Select(p => p.PostId).ToHashSet();
         await foreach (var comment in comments.From(new AllOf<CommentRecord>()))
             if (postIds.Contains(comment.PostId))
                 commentCounts[comment.PostId] = commentCounts.GetValueOrDefault(comment.PostId) + 1;
-
-        var userResult = await vault.Load(q.UserId);
-        if (userResult.IsT1) yield break;
-        var author = userResult.AsT0;
 
         foreach (var post in userPosts.OrderByDescending(p => p.CreatedAt).Take(q.Limit))
         {
