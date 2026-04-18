@@ -29,7 +29,7 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
         var queries = (ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>)
             aggregateQueryMaps.GetOrAdd(typeof(T), _ => new ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>());
         var first = queries.IsEmpty;
-        queries[typeof(TQuery)] = (q, m) => source.From((TQuery)q, m);
+        queries[typeof(TQuery)] = (q, m) => source.From((IQuery<TQuery>)q, m);
         if (first && !stores.ContainsKey(typeof(T)))
             buildSteps.Add((memory, aggSources, _) =>
                 aggSources[typeof(T)] = new FileAggregateSource<T>(null, queries, memory));
@@ -40,7 +40,7 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
         var queries = (ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>>)
             projectionQueryMaps.GetOrAdd(typeof(T), _ => new ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>>());
         var first = queries.IsEmpty;
-        queries[typeof(TQuery)] = (q, m) => source.From((TQuery)q, m);
+        queries[typeof(TQuery)] = (q, m) => source.From((IQuery<TQuery>)q, m);
         if (first)
             buildSteps.Add((memory, _, projSources) =>
                 projSources[typeof(T)] = new FileProjectionSource<T>(queries, memory));
