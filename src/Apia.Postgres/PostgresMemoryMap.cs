@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Apia;
+using JasperFx;
 using Marten;
 using Weasel.Core;
 

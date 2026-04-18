@@ -28,14 +28,13 @@ public sealed class PostgresBranch(
             memory,
             session);
 
-    public Task Save<T>(T entity)
-        => vaultTypes.ContainsKey(typeof(T))
-            ? Task.FromResult(session.Store(entity))
+    public Task Save<T>(T entity) where T : notnull => vaultTypes.ContainsKey(typeof(T))
+            ? Task.FromResult(() => session.Store(entity))
             : throw new InvalidOperationException($"{typeof(T).Name} has no registered store and cannot be saved.");
 
     public Task Delete<T>(Guid id)
         => vaultTypes.ContainsKey(typeof(T))
-            ? Task.FromResult(session.Delete<T>(id))
+            ? Task.FromResult(() => session.Delete<T>(id))
             : throw new InvalidOperationException($"{typeof(T).Name} has no registered store and cannot be deleted.");
 
     public Task Commit() => session.SaveChangesAsync();

@@ -5,10 +5,10 @@ namespace Apia.Postgres;
 
 /// <summary>Dispatches From&lt;TQuery&gt; to registered sources or falls back to a full table scan for IAllOf. Supports ILinqQuery for SQL-level pushdown.</summary>
 public sealed class PostgresAggregateSource<T>(
-    IReadOnlyDictionary<Type, Func<object, IMemory, IDocumentSession, IAsyncEnumerable<T>>> sources,
+    IReadOnlyDictionary<Type, Func<object, IMemory, IQuerySession, IAsyncEnumerable<T>>> sources,
     IMemory memory,
-    IDocumentSession session)
-    : IAggregateSource<T>
+    IQuerySession session)
+    : IAggregateSource<T> where T : notnull
 {
     public IAsyncEnumerable<T> From<TQuery>(TQuery query)
         => query is IAllOf<T>
