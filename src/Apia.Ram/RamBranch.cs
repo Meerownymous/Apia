@@ -30,7 +30,7 @@ public sealed class RamBranch(
         return Task.CompletedTask;
     }
 
-    public Task Delete<T>(Guid id)
+    public Task Delete<T>(string id)
     {
         staged.Add(() => Store<T>().Remove(id));
         return Task.CompletedTask;

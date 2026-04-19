@@ -23,7 +23,7 @@ public sealed class PolicyEnforcedBranch<TContext>(
         return inner.Save(entity);
     }
 
-    public async Task Delete<T>(Guid id)
+    public async Task Delete<T>(string id)
     {
         if (policies.Has<T>())
         {

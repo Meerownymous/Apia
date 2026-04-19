@@ -1,10 +1,11 @@
 using System.Collections.Concurrent;
-using Apia;
 
-namespace Apia.File;
+namespace Apia.DynamoDB;
 
-/// <summary>File-backed unit of work. Save/Delete stage operations; Commit flushes them to disk.</summary>
-public sealed class FileBranch(
+/// <summary>
+/// DynamoDB unit of work. Save/Delete stage operations; Commit flushes them to DynamoDB.
+/// </summary>
+public sealed class DynamoBranch(
     ConcurrentDictionary<Type, object> stores,
     ConcurrentDictionary<Type, object> aggregateSources,
     ConcurrentDictionary<Type, object> projectionSources)

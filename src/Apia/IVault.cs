@@ -4,5 +4,5 @@ namespace Apia;
 
 public interface IVault<T>
 {
-    Task<OneOf<T, NotFound>> Load(Guid id);
+    Task<OneOf<T, NotFound>> Load(string id);
 }

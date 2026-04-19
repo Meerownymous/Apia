@@ -7,7 +7,7 @@ namespace Apia.Postgres;
 /// <summary>Read-only Postgres vault. Opens a lightweight session per Load call.</summary>
 public sealed class PostgresVault<T>(IDocumentStore store) : IVault<T>
 {
-    public async Task<OneOf<T, NotFound>> Load(Guid id)
+    public async Task<OneOf<T, NotFound>> Load(string id)
     {
         await using var session = store.QuerySession();
         var record = await session.LoadAsync<T>(id);

@@ -12,7 +12,7 @@ public sealed class BranchVaultTests
     {
         var map = new RamMemoryMap();
         map.RegisterStore(new UserRecordId());
-        Assert.True((await map.Build().Vault<UserRecord>().Load(Guid.NewGuid())).Match(_ => false, _ => true));
+        Assert.True((await map.Build().Vault<UserRecord>().Load(Guid.NewGuid().ToString())).Match(_ => false, _ => true));
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public sealed class BranchVaultTests
         var branch = memory.Branch();
         await branch.Save(user);
         await branch.Commit();
-        Assert.True((await memory.Vault<UserRecord>().Load(user.UserId)).Match(_ => true, _ => false));
+        Assert.True((await memory.Vault<UserRecord>().Load(user.UserId.ToString())).Match(_ => true, _ => false));
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public sealed class BranchVaultTests
         var branch = memory.Branch();
         await branch.Save(user);
         await branch.Commit();
-        Assert.Equal(user, (await memory.Vault<UserRecord>().Load(user.UserId)).Match(found => found, _ => throw new InvalidOperationException("NotFound")));
+        Assert.Equal(user, (await memory.Vault<UserRecord>().Load(user.UserId.ToString())).Match(found => found, _ => throw new InvalidOperationException("NotFound")));
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class BranchVaultTests
         var memory = map.Build();
         var user   = new UserRecord("Miro");
         await memory.Branch().Save(user);
-        Assert.True((await memory.Vault<UserRecord>().Load(user.UserId)).Match(_ => false, _ => true));
+        Assert.True((await memory.Vault<UserRecord>().Load(user.UserId.ToString())).Match(_ => false, _ => true));
     }
 
     [Fact]
@@ -63,9 +63,9 @@ public sealed class BranchVaultTests
         await b1.Save(user);
         await b1.Commit();
         var b2 = memory.Branch();
-        await b2.Delete<UserRecord>(user.UserId);
+        await b2.Delete<UserRecord>(user.UserId.ToString());
         await b2.Commit();
-        Assert.True((await memory.Vault<UserRecord>().Load(user.UserId)).Match(_ => false, _ => true));
+        Assert.True((await memory.Vault<UserRecord>().Load(user.UserId.ToString())).Match(_ => false, _ => true));
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public sealed class BranchVaultTests
         var b2 = memory.Branch();
         await b2.Save(user with { Username = "Ralph" });
         await b2.Commit();
-        Assert.True((await memory.Vault<UserRecord>().Load(user.UserId)).Match(_ => true, _ => false));
+        Assert.True((await memory.Vault<UserRecord>().Load(user.UserId.ToString())).Match(_ => true, _ => false));
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public sealed class BranchVaultTests
         var b2 = memory.Branch();
         await b2.Save(user with { Username = "Ralph" });
         await b2.Commit();
-        Assert.Equal("Ralph", (await memory.Vault<UserRecord>().Load(user.UserId)).Match(found => found.Username, _ => throw new InvalidOperationException("NotFound")));
+        Assert.Equal("Ralph", (await memory.Vault<UserRecord>().Load(user.UserId.ToString())).Match(found => found.Username, _ => throw new InvalidOperationException("NotFound")));
     }
 
     [Fact]

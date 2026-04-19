@@ -21,7 +21,7 @@ public sealed class ScopedBranch<TFilter>(
             : throw new UnauthorizedAccessException(
                 $"Access denied: cannot save {typeof(T).Name} — CanWrite returned false.");
 
-    public async Task Delete<T>(Guid id)
+    public async Task Delete<T>(string id)
     {
         if (registry.HasScope<T>())
         {

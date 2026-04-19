@@ -10,7 +10,7 @@ public sealed class UserFeedProjection : IAggregateSource<UserPostSummaryView, U
     {
         var q = query.Seed();
         await foreach (var view in
-            (await memory.Vault<UserRecord>().Load(q.UserId)).Match(
+            (await memory.Vault<UserRecord>().Load(q.UserId.ToString())).Match(
                 author => FeedViews(q, author, memory),
                 _ => AsyncEnumerable.Empty<UserPostSummaryView>()))
             yield return view;

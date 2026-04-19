@@ -4,12 +4,12 @@ using Apia;
 
 namespace Apia.Ram;
 
-/// <summary>Thread-safe in-memory store for entities of type T, keyed by Guid.</summary>
+/// <summary>Thread-safe in-memory store for entities of type T, keyed by string id.</summary>
 public sealed class RamEntityStore<T>(IIdentity<T> identity) : IEntityStore<T>
 {
-    private readonly ConcurrentDictionary<Guid, T> store = new();
+    private readonly ConcurrentDictionary<string, T> store = new();
 
-    public Task<OneOf<T, NotFound>> Get(Guid id)
+    public Task<OneOf<T, NotFound>> Get(string id)
         => Task.FromResult(
             store.TryGetValue(id, out var entity)
                 ? OneOf<T, NotFound>.FromT0(entity!)
@@ -27,7 +27,7 @@ public sealed class RamEntityStore<T>(IIdentity<T> identity) : IEntityStore<T>
         return Task.CompletedTask;
     }
 
-    public Task Remove(Guid id)
+    public Task Remove(string id)
     {
         store.TryRemove(id, out _);
         return Task.CompletedTask;

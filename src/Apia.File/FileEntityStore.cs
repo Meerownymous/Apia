@@ -11,7 +11,7 @@ public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) 
     private readonly SemaphoreSlim fileLock = new(1, 1);
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
-    public async Task<OneOf<T, NotFound>> Get(Guid id)
+    public async Task<OneOf<T, NotFound>> Get(string id)
     {
         var store = await Read();
         return store.TryGetValue(id, out var entity)
@@ -38,7 +38,7 @@ public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) 
         finally { fileLock.Release(); }
     }
 
-    public async Task Remove(Guid id)
+    public async Task Remove(string id)
     {
         await fileLock.WaitAsync();
         try
@@ -50,22 +50,22 @@ public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) 
         finally { fileLock.Release(); }
     }
 
-    private async Task<Dictionary<Guid, T>> Read()
+    private async Task<Dictionary<string, T>> Read()
     {
         await fileLock.WaitAsync();
         try { return await ReadUnsafe(); }
         finally { fileLock.Release(); }
     }
 
-    private async Task<Dictionary<Guid, T>> ReadUnsafe()
+    private async Task<Dictionary<string, T>> ReadUnsafe()
     {
         if (!System.IO.File.Exists(path))
             return new();
         await using var stream = System.IO.File.OpenRead(path);
-        return await JsonSerializer.DeserializeAsync<Dictionary<Guid, T>>(stream, JsonOptions) ?? new();
+        return await JsonSerializer.DeserializeAsync<Dictionary<string, T>>(stream, JsonOptions) ?? new();
     }
 
-    private async Task WriteUnsafe(Dictionary<Guid, T> store)
+    private async Task WriteUnsafe(Dictionary<string, T> store)
     {
         Directory.CreateDirectory(directory);
         await using var stream = System.IO.File.Open(path, FileMode.Create, FileAccess.Write);

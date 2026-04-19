@@ -1,17 +1,14 @@
 using System.Collections.Concurrent;
-using Apia;
 
-namespace Apia.File;
+namespace Apia.DynamoDB;
 
-/// <summary>File-backed unit of work. Save/Delete stage operations; Commit flushes them to disk.</summary>
-public sealed class FileBranch(
+/// <summary>DynamoDB-backed IMemory.</summary>
+public sealed class DynamoMemory(
     ConcurrentDictionary<Type, object> stores,
     ConcurrentDictionary<Type, object> aggregateSources,
     ConcurrentDictionary<Type, object> projectionSources)
-    : IBranch
+    : IMemory
 {
-    private readonly List<Func<Task>> staged = new();
-
     public IAsyncEnumerable<T> Aggregate<T>(object query)
         => aggregateSources.TryGetValue(typeof(T), out var src)
             ? ((IAggregateSource<T>)src).From(query)
@@ -22,27 +19,10 @@ public sealed class FileBranch(
             ? ((IProjectionSource<T>)src).From(query)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
-    public Task Save<T>(T entity)
-    {
-        staged.Add(() => Store<T>().Set(entity));
-        return Task.CompletedTask;
-    }
-
-    public Task Delete<T>(string id)
-    {
-        staged.Add(() => Store<T>().Remove(id));
-        return Task.CompletedTask;
-    }
-
-    public async Task Commit()
-    {
-        foreach (var op in staged)
-            await op();
-        staged.Clear();
-    }
-
-    private IEntityStore<T> Store<T>()
+    public IVault<T> Vault<T>()
         => stores.TryGetValue(typeof(T), out var store)
-            ? (IEntityStore<T>)store
+            ? new DynamoVault<T>((IEntityStore<T>)store)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
+
+    public IBranch Branch() => new DynamoBranch(stores, aggregateSources, projectionSources);
 }

@@ -6,7 +6,7 @@ public interface IBranch
     Task<T> Projection<T>(object query);
 
     Task Save<T>(T entity);
-    Task Delete<T>(Guid id);
+    Task Delete<T>(string id);
 
     Task Commit();
 }

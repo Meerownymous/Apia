@@ -12,7 +12,7 @@ public sealed class PolicyEnforcedVault<TRecord, TContext>(
     IAccessPolicy<TRecord, TContext> policy)
     : IVault<TRecord>
 {
-    public async Task<OneOf<TRecord, NotFound>> Load(Guid id)
+    public async Task<OneOf<TRecord, NotFound>> Load(string id)
     {
         var result = await inner.Load(id);
         return result.Match<OneOf<TRecord, NotFound>>(

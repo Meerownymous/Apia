@@ -12,7 +12,7 @@ public sealed class ScopeAwareVault<TRecord, TFilter>(
     TFilter filter)
     : IVault<TRecord>
 {
-    public async Task<OneOf<TRecord, NotFound>> Load(Guid id)
+    public async Task<OneOf<TRecord, NotFound>> Load(string id)
     {
         var result = await inner.Load(id);
         return result.Match<OneOf<TRecord, NotFound>>(

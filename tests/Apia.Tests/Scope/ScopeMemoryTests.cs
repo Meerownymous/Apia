@@ -63,7 +63,7 @@ public sealed class ScopeMemoryTests
         Assert.True(
             (await new ScopeMemory<Guid>(inner, new ScopeBuilder<Guid>().Register<PostRecord>(new AuthorScope()).Build(), Guid.NewGuid())
                 .Vault<PostRecord>()
-                .Load(post.PostId))
+                .Load(post.PostId.ToString()))
             .Match(_ => false, _ => true));
     }
 
