@@ -20,11 +20,11 @@ public sealed class ScopedVault<T, TFilter>(IVault<T> inner, IScope<T, TFilter> 
     public IAsyncEnumerable<T> All()
         => scope.Condition(filter).Match(
             condition => inner.Matching(condition),
-            _ => Included(inner.All()));
+            _ => IncludedEntities(inner.All()));
 
     public IAsyncEnumerable<T> Matching(Expression<Func<T, bool>> condition)
-        => Included(inner.Matching(condition));
+        => IncludedEntities(inner.Matching(condition));
 
-    private IAsyncEnumerable<T> Included(IAsyncEnumerable<T> entities)
+    private IAsyncEnumerable<T> IncludedEntities(IAsyncEnumerable<T> entities)
         => entities.Where(entity => scope.Includes(entity, filter));
 }

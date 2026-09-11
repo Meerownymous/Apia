@@ -27,18 +27,26 @@ public sealed class StoreBranch(
 
     public Task Delete<T>(Guid id) where T : notnull
     {
-        stagings.Entries<T>().Removed.Add(id);
+        Remove(stagings.Entries<T>(), new GivenIdentity<T>(identities), id);
         return Task.CompletedTask;
     }
 
     public async Task<OneOf<Committed, Stale>> Commit()
     {
-        var writes = stagings.Changes().Select(changes => changes.Resolved()).ToList();
+        // Resolving every change first is what makes the commit all or nothing: an entity that cannot
+        // be identified throws here, before the first store has been written to.
+        var resolved = stagings.Changes().Select(changes => changes.Resolution()).ToList();
         foreach (var changes in stagings.Changes())
             if (!await changes.Unchanged())
                 return new Stale();
-        foreach (var write in writes)
+        foreach (var write in resolved)
             await write.Write();
         return new Committed();
+    }
+
+    private static void Remove<T>(Staged<T> staged, IIdentity<T> identity, Guid id) where T : notnull
+    {
+        staged.Saved.RemoveAll(entity => identity.Of(entity) == id);
+        staged.Removed.Add(id);
     }
 }

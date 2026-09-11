@@ -1,0 +1,39 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # The contract suite runs against Postgres here. Locally it is reported as skipped by name, so a
+    # green run without a database cannot be mistaken for full coverage; this is where that gap closes.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: apia
+          POSTGRES_PASSWORD: apia
+          POSTGRES_DB: apia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      APIA_POSTGRES_CONNECTION: Host=localhost;Port=5432;Database=apia;Username=apia;Password=apia
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - run: dotnet test --configuration Release

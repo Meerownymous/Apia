@@ -24,13 +24,13 @@ public sealed class RamEntityStore<T>(IIdentity<T> identity) : IEntityStore<T> w
 
     public Task Write(IReadOnlyCollection<T> saved, IReadOnlyCollection<Guid> removed)
     {
-        foreach (var entity in Identified(saved))
+        foreach (var entity in IdentifiedEntities(saved))
             entities[entity.Key] = new Versioned<T>(entity.Value, Guid.NewGuid());
         foreach (var id in removed)
             entities.TryRemove(id, out _);
         return Task.CompletedTask;
     }
 
-    private IEnumerable<KeyValuePair<Guid, T>> Identified(IEnumerable<T> saved)
+    private IEnumerable<KeyValuePair<Guid, T>> IdentifiedEntities(IEnumerable<T> saved)
         => saved.Select(entity => new KeyValuePair<Guid, T>(identity.Of(entity), entity)).ToList();
 }

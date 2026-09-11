@@ -33,7 +33,7 @@ public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) 
     public async Task Write(IReadOnlyCollection<T> saved, IReadOnlyCollection<Guid> removed)
     {
         await fileLock.WaitAsync();
-        try { await WriteUnsafe(Applied(await ReadUnsafe(), saved, removed)); }
+        try { await WriteUnsafe(Entities(await ReadUnsafe(), saved, removed)); }
         finally { fileLock.Release(); }
     }
 
@@ -53,7 +53,8 @@ public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) 
                ?? new Dictionary<Guid, Versioned<T>>();
     }
 
-    private Dictionary<Guid, Versioned<T>> Applied(
+    /// <summary>The stored entities as they stand once these changes are applied to them.</summary>
+    private Dictionary<Guid, Versioned<T>> Entities(
         Dictionary<Guid, Versioned<T>> stored,
         IEnumerable<T> saved,
         IEnumerable<Guid> removed)

@@ -82,7 +82,10 @@ switched on so they cannot come back, the readme corrected and the blog article 
 
 `IAggregateQuery<T>` / `IProjectionQuery<T>`, `IIdentities` and `IOverrides` as decorators with fluent
 extension methods, `StagedVault` so a branch reads its own writes, versions in every store, `Stale` on
-commit, `IScope` with `Condition` and no default implementations, the entity vocabulary, and the
+commit, `IScope` with `Condition` and no default implementations — with one deviation from the plan
+above: rollback on Ram is delivered by resolving every staged change to its id before the first store
+is written, rather than by snapshotting and restoring. Applying already-resolved changes in process
+cannot fail, so the snapshot had nothing left to protect, the entity vocabulary, and the
 contract suite as a `[SkippableTheory]` over a `ClassData` backend provider.
 
 ### 3. File — landed

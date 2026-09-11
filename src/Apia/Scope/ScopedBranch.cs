@@ -4,7 +4,8 @@ namespace Apia.Scope;
 
 /// <summary>
 /// A unit of work that refuses a save the scope does not permit and a removal the scope does not
-/// permit. What it reads, it reads through a scoped memory.
+/// permit. What it reads, it reads through a scoped memory; what it checks a removal against, it reads
+/// unscoped, because an entity hidden by the scope is exactly the one a removal must not reach.
 /// </summary>
 public sealed class ScopedBranch<TFilter>(
     IBranch inner,
@@ -26,15 +27,15 @@ public sealed class ScopedBranch<TFilter>(
     public async Task Delete<T>(Guid id) where T : notnull
     {
         await scopes.Scope<T>().Match(
-            scope => Refused(scope, id),
+            scope => Refuse(scope, id),
             _ => Task.CompletedTask);
         await inner.Delete<T>(id);
     }
 
     public Task<OneOf<Committed, Stale>> Commit() => inner.Commit();
 
-    private async Task Refused<T>(IScope<T, TFilter> scope, Guid id) where T : notnull
-        => (await Memory().Vault<T>().Entity(id)).Switch(
+    private async Task Refuse<T>(IScope<T, TFilter> scope, Guid id) where T : notnull
+        => (await inner.Memory().Vault<T>().Entity(id)).Switch(
             entity =>
             {
                 if (!scope.CanDelete(entity, filter))

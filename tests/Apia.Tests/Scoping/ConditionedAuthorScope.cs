@@ -15,5 +15,5 @@ public sealed class ConditionedAuthorScope : IScope<Post, Guid>
     public bool CanDelete(Post entity, Guid authorId) => entity.AuthorId == authorId;
 
     public OneOf<Expression<Func<Post, bool>>, None> Condition(Guid authorId)
-        => OneOf<Expression<Func<Post, bool>>, None>.FromT0(post => post.AuthorId == authorId);
+        => (Expression<Func<Post, bool>>)(post => post.AuthorId == authorId);
 }

@@ -302,4 +302,38 @@ public sealed class MemoryTests
                 .ToListAsync())
             .Single().Content);
     }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Vault_Entity_ReturnsNotFound_WhenTheBranchDeletedWhatItHadSaved(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var branch = memory.Branch();
+        await branch.Save(user);
+        await branch.Delete<User>(user.UserId);
+        await branch.Commit();
+
+        Assert.True((await memory.Vault<User>().Entity(user.UserId)).Match(_ => false, _ => true));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Vault_Entity_ReturnsTheEntity_WhenTheBranchSavedWhatItHadDeleted(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var seeding = memory.Branch();
+        await seeding.Save(user);
+        await seeding.Commit();
+        var branch = memory.Branch();
+        await branch.Delete<User>(user.UserId);
+        await branch.Save(user with { Username = "Ralph" });
+        await branch.Commit();
+
+        Assert.Equal(
+            "Ralph",
+            (await memory.Vault<User>().Entity(user.UserId))
+                .Match(found => found.Username, _ => throw new InvalidOperationException("NotFound")));
+    }
 }

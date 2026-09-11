@@ -59,4 +59,19 @@ public sealed class ScopeTests
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await branch.Delete<Post>(post.PostId));
     }
+
+    [Fact]
+    public async Task Branch_Delete_Throws_WhenTheEntityIsOutsideTheScope()
+    {
+        var post = new Post(Guid.NewGuid(), Guid.NewGuid(), "someone else's", 0, DateTime.UtcNow);
+        var memory = new RamMemory(new ExampleIdentities(), new Overrides());
+        var seeding = memory.Branch();
+        await seeding.Save(post);
+        await seeding.Commit();
+        var branch =
+            new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), Guid.NewGuid())
+                .Branch();
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await branch.Delete<Post>(post.PostId));
+    }
 }

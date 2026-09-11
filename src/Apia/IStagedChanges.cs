@@ -7,5 +7,5 @@ public interface IStagedChanges
     Task<bool> Unchanged();
 
     /// <summary>These changes resolved to the ids they will be written under.</summary>
-    IResolvedChanges Resolved();
+    IResolvedChanges Resolution();
 }

@@ -7,28 +7,19 @@ public sealed class StagedChanges<T>(IEntityStore<T> store, Staged<T> staged, II
     public async Task<bool> Unchanged()
     {
         foreach (var read in staged.Read)
-            if (await Changed(read.Key, read.Value))
+            if (await HasChanged(read.Key, read.Value))
                 return false;
         return true;
     }
 
-    public IResolvedChanges Resolved()
-        => Resolved(LatestSaved(staged.Saved, identity));
+    public IResolvedChanges Resolution() => Resolution(new LatestSaved<T>(staged, identity).Entities());
 
-    private IResolvedChanges Resolved(Dictionary<Guid, T> saved)
+    private IResolvedChanges Resolution(IReadOnlyDictionary<Guid, T> saved)
         => new ResolvedChanges<T>(
             store,
             saved.Values.ToList(),
             staged.Removed.Where(id => !saved.ContainsKey(id)).ToList());
 
-    private async Task<bool> Changed(Guid id, Guid version)
+    private async Task<bool> HasChanged(Guid id, Guid version)
         => (await store.Entity(id)).Match(stored => stored.Version != version, _ => true);
-
-    private static Dictionary<Guid, T> LatestSaved(IEnumerable<T> saved, IIdentity<T> identity)
-    {
-        var latest = new Dictionary<Guid, T>();
-        foreach (var entity in saved)
-            latest[identity.Of(entity)] = entity;
-        return latest;
-    }
 }

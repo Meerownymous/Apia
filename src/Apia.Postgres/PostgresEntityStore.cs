@@ -41,5 +41,10 @@ public sealed class PostgresEntityStore<T>(IDocumentSession session) : IEntitySt
     }
 
     private async Task<Guid> Version(T entity)
-        => await session.MetadataForAsync(entity) is { } metadata ? metadata.CurrentVersion : Guid.Empty;
+        => await session.MetadataForAsync(entity) is { } metadata
+            ? metadata.CurrentVersion
+            : throw new InvalidOperationException(
+                $"Marten reported no metadata for the {typeof(T).Name} it had just loaded, so the version "
+                + "it is stored at is unknown. A commit could not tell whether it changed underneath the "
+                + "branch, and silently reporting it unchanged would be worse than failing here.");
 }
