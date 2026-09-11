@@ -24,6 +24,7 @@
     <ItemGroup>
       <ProjectReference Include="..\..\src\Apia\Apia.csproj" />
       <ProjectReference Include="..\..\src\Apia.Ram\Apia.Ram.csproj" />
+      <ProjectReference Include="..\..\src\Apia.File\Apia.File.csproj" />
     </ItemGroup>
 
 </Project>
