@@ -7,7 +7,7 @@ namespace Apia.Postgres;
 public interface IProjectionRegistry<T>
 {
     /// <summary>Registers a session-aware source for the given query type.</summary>
-    void Register<TQuery>(Func<TQuery, IMemory, IQuerySession, Task<T>> source);
+    void Register<TQuery>(Func<TQuery, IMemory, IQuerySession, Task<T>> source) where TQuery : notnull;
 
     /// <summary>All registered sources, keyed by query type.</summary>
     IReadOnlyDictionary<Type, Func<object, IMemory, IQuerySession, Task<T>>> Sources();

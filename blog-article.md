@@ -1,5 +1,10 @@
 # Apia: A Storage Boundary That Keeps Your Use Cases Clean
 
+> **This article is obsolete.** It describes an earlier shape of Apia that no longer exists in the
+> source tree. `Save` never returned a conflict outcome, `Conflict<T>` has been deleted, and the
+> library is being rebuilt — see `docs/rebuild-plan.md` and issue #13. Read it as history, not as
+> documentation. It will be rewritten once the rebuild lands.
+
 *How an explicit `IMemory` abstraction lets you ship features on day one and optimize specific bottlenecks later — without touching business logic*
 
 ---

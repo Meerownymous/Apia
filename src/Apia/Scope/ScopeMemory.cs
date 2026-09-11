@@ -12,7 +12,7 @@ public sealed class ScopeMemory<TFilter>(
     TFilter filter)
     : IMemory
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query)
+    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull
     {
         if (!registry.HasScope<T>())
             return inner.Aggregate<T>(query);
@@ -23,9 +23,9 @@ public sealed class ScopeMemory<TFilter>(
             .From(query);
     }
 
-    public Task<T> Projection<T>(object query) => inner.Projection<T>(query);
+    public Task<T> Projection<T>(object query) where T : notnull => inner.Projection<T>(query);
 
-    public IVault<T> Vault<T>()
+    public IVault<T> Vault<T>() where T : notnull
     {
         var vault = inner.Vault<T>();
         return registry.HasScope<T>()

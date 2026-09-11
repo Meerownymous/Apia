@@ -12,29 +12,29 @@ public sealed class PostgresMemory(
     ConcurrentDictionary<Type, object> projectionRegistries)
     : IMemory
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query)
+    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull
         => new PostgresAggregateSource<T>(
             AggregateRegistry<T>().Sources(),
             this,
             store.QuerySession()).From(query);
 
-    public Task<T> Projection<T>(object query)
+    public Task<T> Projection<T>(object query) where T : notnull
         => new PostgresProjectionSource<T>(
             ProjectionRegistry<T>().Sources(),
             this,
             store.QuerySession()).From(query);
 
-    public IVault<T> Vault<T>() => new PostgresVault<T>(store);
+    public IVault<T> Vault<T>() where T : notnull => new PostgresVault<T>(store);
 
     public IBranch Branch()
         => new PostgresBranch(store.LightweightSession(), this, vaultTypes, aggregateRegistries, projectionRegistries);
 
-    private IAggregateRegistry<T> AggregateRegistry<T>()
+    private IAggregateRegistry<T> AggregateRegistry<T>() where T : notnull
         => aggregateRegistries.TryGetValue(typeof(T), out var r)
             ? (IAggregateRegistry<T>)r
             : new PostgresAggregateRegistry<T>();
 
-    private IProjectionRegistry<T> ProjectionRegistry<T>()
+    private IProjectionRegistry<T> ProjectionRegistry<T>() where T : notnull
         => projectionRegistries.TryGetValue(typeof(T), out var r)
             ? (IProjectionRegistry<T>)r
             : new PostgresProjectionRegistry<T>();

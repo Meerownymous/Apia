@@ -11,17 +11,17 @@ public sealed class ScopedBranch<TFilter>(
     TFilter filter)
     : IBranch
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query) => inner.Aggregate<T>(query);
+    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull => inner.Aggregate<T>(query);
 
-    public Task<T> Projection<T>(object query) => inner.Projection<T>(query);
+    public Task<T> Projection<T>(object query) where T : notnull => inner.Projection<T>(query);
 
-    public Task Save<T>(T entity)
+    public Task Save<T>(T entity) where T : notnull
         => !registry.HasScope<T>() || registry.ScopeFor<T>().CanWrite(entity, filter)
             ? inner.Save(entity)
             : throw new UnauthorizedAccessException(
                 $"Access denied: cannot save {typeof(T).Name} — CanWrite returned false.");
 
-    public async Task Delete<T>(Guid id)
+    public async Task Delete<T>(Guid id) where T : notnull
     {
         if (registry.HasScope<T>())
         {

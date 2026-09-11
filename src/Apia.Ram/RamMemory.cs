@@ -10,17 +10,17 @@ public sealed class RamMemory(
     ConcurrentDictionary<Type, object> projectionSources)
     : IMemory
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query)
+    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull
         => aggregateSources.TryGetValue(typeof(T), out var src)
             ? ((IAggregateSource<T>)src).From(query)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
-    public Task<T> Projection<T>(object query)
+    public Task<T> Projection<T>(object query) where T : notnull
         => projectionSources.TryGetValue(typeof(T), out var src)
             ? ((IProjectionSource<T>)src).From(query)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
-    public IVault<T> Vault<T>()
+    public IVault<T> Vault<T>() where T : notnull
         => stores.TryGetValue(typeof(T), out var store)
             ? new RamVault<T>((IEntityStore<T>)store)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");

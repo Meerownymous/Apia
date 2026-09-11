@@ -12,23 +12,23 @@ public sealed class FileBranch(
 {
     private readonly List<Func<Task>> staged = new();
 
-    public IAsyncEnumerable<T> Aggregate<T>(object query)
+    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull
         => aggregateSources.TryGetValue(typeof(T), out var src)
             ? ((IAggregateSource<T>)src).From(query)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
-    public Task<T> Projection<T>(object query)
+    public Task<T> Projection<T>(object query) where T : notnull
         => projectionSources.TryGetValue(typeof(T), out var src)
             ? ((IProjectionSource<T>)src).From(query)
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");
 
-    public Task Save<T>(T entity)
+    public Task Save<T>(T entity) where T : notnull
     {
         staged.Add(() => Store<T>().Set(entity));
         return Task.CompletedTask;
     }
 
-    public Task Delete<T>(Guid id)
+    public Task Delete<T>(Guid id) where T : notnull
     {
         staged.Add(() => Store<T>().Remove(id));
         return Task.CompletedTask;
@@ -41,7 +41,7 @@ public sealed class FileBranch(
         staged.Clear();
     }
 
-    private IEntityStore<T> Store<T>()
+    private IEntityStore<T> Store<T>() where T : notnull
         => stores.TryGetValue(typeof(T), out var store)
             ? (IEntityStore<T>)store
             : throw new InvalidOperationException($"No store registered for {typeof(T).Name}.");

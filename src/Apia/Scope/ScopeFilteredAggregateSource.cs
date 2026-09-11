@@ -11,7 +11,7 @@ namespace Apia.Scope;
 public sealed class ScopeFilteredAggregateSource<TRecord, TFilter>(
     Func<object, IAsyncEnumerable<TRecord>> inner,
     IScope<TRecord, TFilter> scope,
-    TFilter filter) : IAggregateSource<TRecord>
+    TFilter filter) : IAggregateSource<TRecord> where TRecord : notnull
 {
     public IAsyncEnumerable<TRecord> From(object query)
         => scope.AsLinq(filter).Match(

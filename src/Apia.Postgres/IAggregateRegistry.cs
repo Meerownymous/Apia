@@ -7,7 +7,7 @@ namespace Apia.Postgres;
 public interface IAggregateRegistry<T>
 {
     /// <summary>Registers a session-aware source for the given query type.</summary>
-    void Register<TQuery>(Func<TQuery, IMemory, IQuerySession, IAsyncEnumerable<T>> source);
+    void Register<TQuery>(Func<TQuery, IMemory, IQuerySession, IAsyncEnumerable<T>> source) where TQuery : notnull;
 
     /// <summary>All registered sources, keyed by query type.</summary>
     IReadOnlyDictionary<Type, Func<object, IMemory, IQuerySession, IAsyncEnumerable<T>>> Sources();

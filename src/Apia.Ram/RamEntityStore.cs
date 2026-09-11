@@ -5,7 +5,7 @@ using Apia;
 namespace Apia.Ram;
 
 /// <summary>Thread-safe in-memory store for entities of type T, keyed by Guid.</summary>
-public sealed class RamEntityStore<T>(IIdentity<T> identity) : IEntityStore<T>
+public sealed class RamEntityStore<T>(IIdentity<T> identity) : IEntityStore<T> where T : notnull
 {
     private readonly ConcurrentDictionary<Guid, T> store = new();
 
@@ -15,11 +15,7 @@ public sealed class RamEntityStore<T>(IIdentity<T> identity) : IEntityStore<T>
                 ? OneOf<T, NotFound>.FromT0(entity!)
                 : new NotFound());
 
-    public async IAsyncEnumerable<T> All()
-    {
-        foreach (var entity in store.Values)
-            yield return entity;
-    }
+    public IAsyncEnumerable<T> All() => store.Values.ToAsyncEnumerable();
 
     public Task Set(T entity)
     {
