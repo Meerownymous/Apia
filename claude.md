@@ -39,8 +39,17 @@
 - Test classes have no private methods that are no tests
 - If records are needed for tests, place them in a seperate records folder in the test project
 - One Assert per test
-- Every backend passes the shared contract suite. A backend that is only reachable in CI still has its entry in the suite, and a local run names the backends it skipped
 
-# Collaboration Rules
-- Ask exactly one question per message, then wait for the answer. Never send a batch of numbered questions, even when a skill or workflow prescribes asking a whole round at once.
-- When told to remember something, write it into this file. Never store it in the assistant's own memory directory.
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `Meerownymous/Apia`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, used verbatim as label strings. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
