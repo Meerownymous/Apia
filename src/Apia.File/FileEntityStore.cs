@@ -4,7 +4,11 @@ using Apia;
 
 namespace Apia.File;
 
-/// <summary>File-backed entity store. Persists entities as JSON in a single file per type.</summary>
+/// <summary>
+/// File-backed entity store. Persists entities as JSON in a single file per type. A write serialises
+/// into a pending file beside it and renames that over the type's file, so a write that fails leaves
+/// the previously stored entities untouched.
+/// </summary>
 public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) : IEntityStore<T> where T : notnull
 {
     private readonly string path = Path.Combine(directory, $"{typeof(T).Name}.json");
@@ -68,7 +72,30 @@ public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) 
     private async Task WriteUnsafe(Dictionary<Guid, T> store)
     {
         Directory.CreateDirectory(directory);
-        await using var stream = System.IO.File.Open(path, FileMode.Create, FileAccess.Write);
+        var pending = Path.Combine(directory, $"{typeof(T).Name}.{Guid.NewGuid():N}.pending");
+        try
+        {
+            await Serialize(store, pending);
+            System.IO.File.Move(pending, path, overwrite: true);
+        }
+        catch
+        {
+            Discard(pending);
+            throw;
+        }
+    }
+
+    private static async Task Serialize(Dictionary<Guid, T> store, string target)
+    {
+        await using var stream = System.IO.File.Open(target, FileMode.Create, FileAccess.Write);
         await JsonSerializer.SerializeAsync(stream, store, JsonOptions);
+        stream.Flush(flushToDisk: true);
+    }
+
+    private static void Discard(string target)
+    {
+        try { System.IO.File.Delete(target); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
     }
 }
