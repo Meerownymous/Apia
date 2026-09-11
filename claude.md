@@ -10,11 +10,12 @@
 - classes can only have public methods which are defined by the interface they implement
 - classes implement maximum of one interface
 - No interface inheritance
+- No default interface implementations: behaviour belongs in classes, and a silently inherited default hides a decision the implementer should state
 - No internal classes, only allowed for in-class (nested) classes
 - No scope hacks by populating internal members or invoking functions across classes within the library
 - All interface methods are documented at the interface level
 - Naming is strict: objects are named by what they ARE, not what they DO
-- Names of methods that return something are nouns
+- Names of methods that return something are nouns, except methods returning bool: those state a fact and read as assertions (Includes, CanWrite)
 - Names of methods that perform actions are verbs
 - All classes are given a name that describes what they are/represent, not what they do (result oriented)
 - Names liker handler, producer, factory are to be avoided
@@ -23,7 +24,7 @@
 - protected modifiers are strictly forbidden
 - Decorator pattern is favorited (composable objects)
 - No internal methods, classes, or members
-- Classes that do not implement interfaces are forbidden
+- Classes that do not implement interfaces are forbidden, except record and record struct types that carry values and have no behaviour
 - Marker interfaces are forbidden
 - Reflection is forbidden, exception: type inspection
 - Public static methods that are not extensions are forbidde
@@ -38,3 +39,8 @@
 - Test classes have no private methods that are no tests
 - If records are needed for tests, place them in a seperate records folder in the test project
 - One Assert per test
+- Every backend passes the shared contract suite. A backend that is only reachable in CI still has its entry in the suite, and a local run names the backends it skipped
+
+# Collaboration Rules
+- Ask exactly one question per message, then wait for the answer. Never send a batch of numbered questions, even when a skill or workflow prescribes asking a whole round at once.
+- When told to remember something, write it into this file. Never store it in the assistant's own memory directory.
