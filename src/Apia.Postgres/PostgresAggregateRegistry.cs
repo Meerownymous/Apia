@@ -5,7 +5,7 @@ using Marten;
 namespace Apia.Postgres;
 
 /// <summary>A registry of session-aware aggregate query sources for entities of type T.</summary>
-public sealed class PostgresAggregateRegistry<T> : IAggregateRegistry<T>
+public sealed class PostgresAggregateRegistry<T> : IAggregateRegistry<T> where T : notnull
 {
     private readonly ConcurrentDictionary<Type, Func<object, IMemory, IQuerySession, IAsyncEnumerable<T>>> sources = new();
 

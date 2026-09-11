@@ -5,7 +5,7 @@ using Marten;
 namespace Apia.Postgres;
 
 /// <summary>A registry of session-aware single-result projection sources for entities of type T.</summary>
-public sealed class PostgresProjectionRegistry<T> : IProjectionRegistry<T>
+public sealed class PostgresProjectionRegistry<T> : IProjectionRegistry<T> where T : notnull
 {
     private readonly ConcurrentDictionary<Type, Func<object, IMemory, IQuerySession, Task<T>>> sources = new();
 

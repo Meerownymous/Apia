@@ -4,7 +4,7 @@ using Marten;
 namespace Apia.Postgres;
 
 /// <summary>A registry of session-aware aggregate query sources for entities of type T.</summary>
-public interface IAggregateRegistry<T>
+public interface IAggregateRegistry<T> where T : notnull
 {
     /// <summary>Registers a session-aware source for the given query type.</summary>
     void Register<TQuery>(Func<TQuery, IMemory, IQuerySession, IAsyncEnumerable<T>> source) where TQuery : notnull;
