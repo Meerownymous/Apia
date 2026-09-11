@@ -1,38 +1,28 @@
 namespace Apia.Scope;
 
 /// <summary>
-/// Decorator that enforces registered <see cref="IScope{TRecord,TFilter}"/> objects on
-/// Vault access and Branch mutations. Aggregate reads are scope-filtered via
-/// <see cref="ScopeFilteredAggregateSource{TRecord,TFilter}"/>.
-/// Projection reads pass through unchanged — computed values cannot be post-filtered.
+/// A memory that reads and writes only what the scopes in force permit for one filter value. A query's
+/// own implementation runs against this memory, so the scope holds inside it. A backend override does
+/// not read through the vault and therefore reads past the scope — see
+/// docs/adr/0001-backend-overrides-bypass-scopes.md. This is not a complete boundary.
 /// </summary>
 public sealed class ScopeMemory<TFilter>(
     IMemory inner,
-    IScopeRegistry<TFilter> registry,
+    IOverrides overrides,
+    IScopes<TFilter> scopes,
     TFilter filter)
     : IMemory
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull
-    {
-        if (!registry.HasScope<T>())
-            return inner.Aggregate<T>(query);
-        return new ScopeFilteredAggregateSource<T, TFilter>(
-                q => inner.Aggregate<T>(q),
-                registry.ScopeFor<T>(),
-                filter)
-            .From(query);
-    }
+    public IAsyncEnumerable<T> Aggregate<T>(IAggregateQuery<T> query) where T : notnull
+        => overrides.Results(query, this).Match(results => results, _ => query.Results(this));
 
-    public Task<T> Projection<T>(object query) where T : notnull => inner.Projection<T>(query);
+    public Task<T> Projection<T>(IProjectionQuery<T> query) where T : notnull
+        => overrides.Result(query, this).Match(result => result, _ => query.Result(this));
 
     public IVault<T> Vault<T>() where T : notnull
-    {
-        var vault = inner.Vault<T>();
-        return registry.HasScope<T>()
-            ? new ScopeAwareVault<T, TFilter>(vault, registry.ScopeFor<T>(), filter)
-            : vault;
-    }
+        => scopes.Scope<T>().Match<IVault<T>>(
+            scope => new ScopedVault<T, TFilter>(inner.Vault<T>(), scope, filter),
+            _ => inner.Vault<T>());
 
-    public IBranch Branch()
-        => new ScopedBranch<TFilter>(inner.Branch(), this, registry, filter);
+    public IBranch Branch() => new ScopedBranch<TFilter>(inner.Branch(), overrides, scopes, filter);
 }

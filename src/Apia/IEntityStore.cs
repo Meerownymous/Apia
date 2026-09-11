@@ -1,25 +1,23 @@
+using System.Linq.Expressions;
 using OneOf;
 
 namespace Apia;
 
-/// <summary>A persistent store for entities of type T, keyed by Guid.</summary>
+/// <summary>The persistence of a single entity type inside one backend. Below the vault, never seen by a use case.</summary>
 public interface IEntityStore<T> where T : notnull
 {
-    /// <summary>The entity with the given id, or NotFound.</summary>
-    Task<OneOf<T, NotFound>> Get(Guid id);
+    /// <summary>The stored entity with the given id at the version it is stored at, or <see cref="NotFound"/>.</summary>
+    Task<OneOf<Versioned<T>, NotFound>> Entity(Guid id);
 
-    /// <summary>All entities currently in the store.</summary>
+    /// <summary>Every stored entity of type T.</summary>
     IAsyncEnumerable<T> All();
 
-    /// <summary>
-    /// Persists the given entity, replacing any existing entry with the same id. A call that fails
-    /// leaves every already stored entity as it was.
-    /// </summary>
-    Task Set(T entity);
+    /// <summary>Every stored entity of type T satisfying the given condition.</summary>
+    IAsyncEnumerable<T> Matching(Expression<Func<T, bool>> condition);
 
     /// <summary>
-    /// Removes the entity with the given id. A call that fails leaves every already stored entity as
-    /// it was.
+    /// Stores the given entities and removes the given ids in a single write, giving every stored
+    /// entity a fresh version. A write that fails leaves every already stored entity as it was.
     /// </summary>
-    Task Remove(Guid id);
+    Task Write(IReadOnlyCollection<T> saved, IReadOnlyCollection<Guid> removed);
 }

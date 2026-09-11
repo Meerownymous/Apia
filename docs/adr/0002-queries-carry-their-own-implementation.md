@@ -1,7 +1,8 @@
 # Queries carry their own implementation
 
 A query object holds both what is asked and how to answer it, as a storage-agnostic implementation
-reading through the memory it is handed. The memory composition may additionally register a
+reading through the memory it is handed: `IAggregateQuery<T>.Results(IMemory)` for many results,
+`IProjectionQuery<T>.Result(IMemory)` for exactly one. The composition may additionally supply a
 backend-specific override for a query, chosen at composition time and never visible to a use case.
 
 We chose this over a registry that binds a query type to an implementation, because a registry makes
@@ -12,4 +13,6 @@ compiler rejects a mismatched pair that previously only failed in production.
 ## Consequences
 
 The two-phase memory construction disappears with it (see ADR-0003), because a query now receives the
-memory when it runs rather than when it is registered. Scopes stop at overrides (see ADR-0001).
+memory when it runs rather than when it is registered. A query therefore reads through whichever memory
+it was asked through, which is what makes a branch's overlay and a scope reach inside it. Scopes stop at
+overrides (see ADR-0001).

@@ -1,41 +1,35 @@
-using System.Collections.Concurrent;
 using Apia;
 using Marten;
 
 namespace Apia.Postgres;
 
-/// <summary>Postgres-backed IMemory via a Marten IDocumentStore. Sessions are created per access.</summary>
-public sealed class PostgresMemory(
-    IDocumentStore store,
-    ConcurrentDictionary<Type, object> vaultTypes,
-    ConcurrentDictionary<Type, object> aggregateRegistries,
-    ConcurrentDictionary<Type, object> projectionRegistries)
-    : IMemory
+/// <summary>
+/// A memory holding its entities in Postgres through Marten. Moving to SQL is a change of composition
+/// and nothing else: the identities are the same ones every other backend is composed from.
+/// <para>
+/// Marten decides for itself which member of an entity carries its id. The document store handed in
+/// here must be configured so that it agrees with the identities — Apia does not configure Marten.
+/// </para>
+/// <para>
+/// Commit atomicity: a commit is one Marten transaction across every entity type it touches, so it
+/// either happens entirely or not at all.
+/// </para>
+/// </summary>
+public sealed class PostgresMemory : IMemory
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull
-        => new PostgresAggregateSource<T>(
-            AggregateRegistry<T>().Sources(),
-            this,
-            store.QuerySession()).From(query);
+    private readonly IMemory memory;
 
-    public Task<T> Projection<T>(object query) where T : notnull
-        => new PostgresProjectionSource<T>(
-            ProjectionRegistry<T>().Sources(),
-            this,
-            store.QuerySession()).From(query);
+    public PostgresMemory(IDocumentStore store, IIdentities identities, IOverrides overrides)
+        => memory = new Memory(
+            new PostgresVaults(store),
+            new PostgresBranches(store, identities, overrides),
+            overrides);
 
-    public IVault<T> Vault<T>() where T : notnull => new PostgresVault<T>(store);
+    public IAsyncEnumerable<T> Aggregate<T>(IAggregateQuery<T> query) where T : notnull => memory.Aggregate(query);
 
-    public IBranch Branch()
-        => new PostgresBranch(store.LightweightSession(), this, vaultTypes, aggregateRegistries, projectionRegistries);
+    public Task<T> Projection<T>(IProjectionQuery<T> query) where T : notnull => memory.Projection(query);
 
-    private IAggregateRegistry<T> AggregateRegistry<T>() where T : notnull
-        => aggregateRegistries.TryGetValue(typeof(T), out var r)
-            ? (IAggregateRegistry<T>)r
-            : new PostgresAggregateRegistry<T>();
+    public IVault<T> Vault<T>() where T : notnull => memory.Vault<T>();
 
-    private IProjectionRegistry<T> ProjectionRegistry<T>() where T : notnull
-        => projectionRegistries.TryGetValue(typeof(T), out var r)
-            ? (IProjectionRegistry<T>)r
-            : new PostgresProjectionRegistry<T>();
+    public IBranch Branch() => memory.Branch();
 }
