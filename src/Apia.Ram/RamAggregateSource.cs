@@ -12,7 +12,7 @@ public sealed class RamAggregateSource<T>(
     IEntityStore<T>? store,
     ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>> sources,
     IMemory memory)
-    : IAggregateSource<T>
+    : IAggregateSource<T> where T : notnull
 {
     public IAsyncEnumerable<T> From(object query)
         => query is IAllOf<T>

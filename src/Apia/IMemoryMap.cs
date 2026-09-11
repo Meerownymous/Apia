@@ -6,10 +6,10 @@ public interface IMemoryMap
     void RegisterStore<T>(IIdentity<T> identity) where T : notnull;
 
     /// <summary>Register a multi-result aggregate query.</summary>
-    void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull;
+    void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull where TQuery : notnull;
 
     /// <summary>Register a single-result projection query.</summary>
-    void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull;
+    void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull where TQuery : notnull;
 
     IMemory Build();
 }

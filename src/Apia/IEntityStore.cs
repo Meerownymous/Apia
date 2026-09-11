@@ -3,7 +3,7 @@ using OneOf;
 namespace Apia;
 
 /// <summary>A persistent store for entities of type T, keyed by Guid.</summary>
-public interface IEntityStore<T>
+public interface IEntityStore<T> where T : notnull
 {
     /// <summary>The entity with the given id, or NotFound.</summary>
     Task<OneOf<T, NotFound>> Get(Guid id);

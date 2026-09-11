@@ -10,7 +10,7 @@ public sealed class ScopeAwareVault<TRecord, TFilter>(
     IVault<TRecord> inner,
     IScope<TRecord, TFilter> scope,
     TFilter filter)
-    : IVault<TRecord>
+    : IVault<TRecord> where TRecord : notnull
 {
     public async Task<OneOf<TRecord, NotFound>> Load(Guid id)
     {

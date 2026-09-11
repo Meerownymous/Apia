@@ -16,13 +16,13 @@ public sealed class PostgresBranch(
     ConcurrentDictionary<Type, object> projectionRegistries)
     : IBranch
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query)
+    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull
         => new PostgresAggregateSource<T>(
             AggregateRegistry<T>().Sources(),
             memory,
             session).From(query);
 
-    public Task<T> Projection<T>(object query)
+    public Task<T> Projection<T>(object query) where T : notnull
         => new PostgresProjectionSource<T>(
             ProjectionRegistry<T>().Sources(),
             memory,
@@ -32,19 +32,19 @@ public sealed class PostgresBranch(
             ? Task.FromResult(() => session.Store(entity))
             : throw new InvalidOperationException($"{typeof(T).Name} has no registered store and cannot be saved.");
 
-    public Task Delete<T>(Guid id)
+    public Task Delete<T>(Guid id) where T : notnull
         => vaultTypes.ContainsKey(typeof(T))
             ? Task.FromResult(() => session.Delete<T>(id))
             : throw new InvalidOperationException($"{typeof(T).Name} has no registered store and cannot be deleted.");
 
     public Task Commit() => session.SaveChangesAsync();
 
-    private IAggregateRegistry<T> AggregateRegistry<T>()
+    private IAggregateRegistry<T> AggregateRegistry<T>() where T : notnull
         => aggregateRegistries.TryGetValue(typeof(T), out var r)
             ? (IAggregateRegistry<T>)r
             : new PostgresAggregateRegistry<T>();
 
-    private IProjectionRegistry<T> ProjectionRegistry<T>()
+    private IProjectionRegistry<T> ProjectionRegistry<T>() where T : notnull
         => projectionRegistries.TryGetValue(typeof(T), out var r)
             ? (IProjectionRegistry<T>)r
             : new PostgresProjectionRegistry<T>();

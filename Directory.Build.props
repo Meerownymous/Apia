@@ -1,0 +1,19 @@
+<Project>
+
+    <!--
+      Documentation files are generated so that the compiler resolves every cref in an XML comment.
+      An unresolved one is an error, not a warning: a comment pointing at a type that no longer exists
+      is how the source tree grew three descriptions of mechanisms that had already been deleted.
+
+      CS1591 (missing XML comment) stays off. The rule in claude.md is that documentation lives at the
+      interface level, and CS1591 cannot express that — switched on it would demand a comment on every
+      public member of every implementation too. So it guards nothing here, and the interface-level rule
+      is enforced by review rather than by the compiler.
+    -->
+    <PropertyGroup>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <NoWarn>$(NoWarn);CS1591</NoWarn>
+        <WarningsAsErrors>$(WarningsAsErrors);CS1574;CS1580;CS1581;CS1584;CS1710;CS1723</WarningsAsErrors>
+    </PropertyGroup>
+
+</Project>

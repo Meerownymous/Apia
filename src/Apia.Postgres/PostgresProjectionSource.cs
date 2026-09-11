@@ -8,7 +8,7 @@ public sealed class PostgresProjectionSource<T>(
     IReadOnlyDictionary<Type, Func<object, IMemory, IQuerySession, Task<T>>> sources,
     IMemory memory,
     IQuerySession session)
-    : IProjectionSource<T>
+    : IProjectionSource<T> where T : notnull
 {
     public Task<T> From(object query)
         => sources.TryGetValue(query.GetType(), out var source)

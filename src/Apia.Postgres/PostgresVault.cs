@@ -5,7 +5,7 @@ using OneOf;
 namespace Apia.Postgres;
 
 /// <summary>Read-only Postgres vault. Opens a lightweight session per Load call.</summary>
-public sealed class PostgresVault<T>(IDocumentStore store) : IVault<T>
+public sealed class PostgresVault<T>(IDocumentStore store) : IVault<T> where T : notnull
 {
     public async Task<OneOf<T, NotFound>> Load(Guid id)
     {

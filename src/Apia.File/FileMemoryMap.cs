@@ -24,7 +24,7 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
         });
     }
 
-    public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull
+    public void RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery> source) where T : notnull where TQuery : notnull
     {
         var queries = (ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>)
             aggregateQueryMaps.GetOrAdd(typeof(T), _ => new ConcurrentDictionary<Type, Func<object, IMemory, IAsyncEnumerable<T>>>());
@@ -35,7 +35,7 @@ public sealed class FileMemoryMap(string directory) : IMemoryMap
                 aggSources[typeof(T)] = new FileAggregateSource<T>(null, queries, memory));
     }
 
-    public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull
+    public void RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery> source) where T : notnull where TQuery : notnull
     {
         var queries = (ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>>)
             projectionQueryMaps.GetOrAdd(typeof(T), _ => new ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>>());

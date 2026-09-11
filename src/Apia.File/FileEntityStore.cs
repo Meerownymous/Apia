@@ -5,7 +5,7 @@ using Apia;
 namespace Apia.File;
 
 /// <summary>File-backed entity store. Persists entities as JSON in a single file per type.</summary>
-public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) : IEntityStore<T>
+public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) : IEntityStore<T> where T : notnull
 {
     private readonly string path = Path.Combine(directory, $"{typeof(T).Name}.json");
     private readonly SemaphoreSlim fileLock = new(1, 1);

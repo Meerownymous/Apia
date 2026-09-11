@@ -7,7 +7,7 @@ namespace Apia.Ram;
 public sealed class RamProjectionSource<T>(
     ConcurrentDictionary<Type, Func<object, IMemory, Task<T>>> sources,
     IMemory memory)
-    : IProjectionSource<T>
+    : IProjectionSource<T> where T : notnull
 {
     public Task<T> From(object query)
         => sources.TryGetValue(query.GetType(), out var source)

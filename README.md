@@ -401,5 +401,4 @@ dotnet add package Apia
 dotnet add package Apia.Ram       # in-memory backend
 dotnet add package Apia.File      # file-based backend
 dotnet add package Apia.Postgres  # PostgreSQL via Marten
-dotnet add package Apia.Scoped    # scope-filtered memory
 ```
