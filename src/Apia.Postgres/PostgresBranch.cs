@@ -1,51 +1,39 @@
-using System.Collections.Concurrent;
 using Apia;
 using Marten;
+using OneOf;
 
 namespace Apia.Postgres;
 
 /// <summary>
-/// Postgres unit of work. Save/Delete stage into the Marten session; Commit flushes via SaveChangesAsync.
-/// Only types registered via RegisterStore are writable.
+/// A unit of work over one Marten session. Staged changes reach the session on commit and the database
+/// in the one transaction the session saves in, so a commit on this backend is all or nothing. The
+/// session is closed when the branch commits, whatever the outcome.
 /// </summary>
-public sealed class PostgresBranch(
-    IDocumentSession session,
-    IMemory memory,
-    ConcurrentDictionary<Type, object> vaultTypes,
-    ConcurrentDictionary<Type, object> aggregateRegistries,
-    ConcurrentDictionary<Type, object> projectionRegistries)
-    : IBranch
+public sealed class PostgresBranch : IBranch
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull
-        => new PostgresAggregateSource<T>(
-            AggregateRegistry<T>().Sources(),
-            memory,
-            session).From(query);
+    private readonly IDocumentSession session;
+    private readonly IBranch inner;
 
-    public Task<T> Projection<T>(object query) where T : notnull
-        => new PostgresProjectionSource<T>(
-            ProjectionRegistry<T>().Sources(),
-            memory,
-            session).From(query);
+    public PostgresBranch(IDocumentSession session, IIdentities identities, IOverrides overrides, IBranches branches)
+    {
+        this.session = session;
+        inner = new StoreBranch(new PostgresStores(session), identities, overrides, branches);
+    }
 
-    public Task Save<T>(T entity) where T : notnull => vaultTypes.ContainsKey(typeof(T))
-            ? Task.FromResult(() => session.Store(entity))
-            : throw new InvalidOperationException($"{typeof(T).Name} has no registered store and cannot be saved.");
+    public IMemory Memory() => inner.Memory();
 
-    public Task Delete<T>(Guid id) where T : notnull
-        => vaultTypes.ContainsKey(typeof(T))
-            ? Task.FromResult(() => session.Delete<T>(id))
-            : throw new InvalidOperationException($"{typeof(T).Name} has no registered store and cannot be deleted.");
+    public Task Save<T>(T entity) where T : notnull => inner.Save(entity);
 
-    public Task Commit() => session.SaveChangesAsync();
+    public Task Delete<T>(Guid id) where T : notnull => inner.Delete<T>(id);
 
-    private IAggregateRegistry<T> AggregateRegistry<T>() where T : notnull
-        => aggregateRegistries.TryGetValue(typeof(T), out var r)
-            ? (IAggregateRegistry<T>)r
-            : new PostgresAggregateRegistry<T>();
-
-    private IProjectionRegistry<T> ProjectionRegistry<T>() where T : notnull
-        => projectionRegistries.TryGetValue(typeof(T), out var r)
-            ? (IProjectionRegistry<T>)r
-            : new PostgresProjectionRegistry<T>();
+    public async Task<OneOf<Committed, Stale>> Commit()
+    {
+        try
+        {
+            var outcome = await inner.Commit();
+            await outcome.Match(_ => session.SaveChangesAsync(), _ => Task.CompletedTask);
+            return outcome;
+        }
+        finally { await session.DisposeAsync(); }
+    }
 }

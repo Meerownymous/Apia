@@ -1,43 +1,45 @@
+using OneOf;
+
 namespace Apia.Scope;
 
 /// <summary>
-/// Wraps <see cref="IBranch"/> and enforces <see cref="IScope{TRecord,TFilter}"/> on
-/// Save and Delete. Uses the outer <see cref="IMemory"/> to load entities for CanDelete checks.
+/// A unit of work that refuses a save the scope does not permit and a removal the scope does not
+/// permit. What it reads, it reads through a scoped memory.
 /// </summary>
 public sealed class ScopedBranch<TFilter>(
     IBranch inner,
-    IMemory memory,
-    IScopeRegistry<TFilter> registry,
+    IOverrides overrides,
+    IScopes<TFilter> scopes,
     TFilter filter)
     : IBranch
 {
-    public IAsyncEnumerable<T> Aggregate<T>(object query) where T : notnull => inner.Aggregate<T>(query);
-
-    public Task<T> Projection<T>(object query) where T : notnull => inner.Projection<T>(query);
+    public IMemory Memory() => new ScopeMemory<TFilter>(inner.Memory(), overrides, scopes, filter);
 
     public Task Save<T>(T entity) where T : notnull
-        => !registry.HasScope<T>() || registry.ScopeFor<T>().CanWrite(entity, filter)
-            ? inner.Save(entity)
-            : throw new UnauthorizedAccessException(
-                $"Access denied: cannot save {typeof(T).Name} — CanWrite returned false.");
+        => scopes.Scope<T>().Match(
+            scope => scope.CanWrite(entity, filter)
+                ? inner.Save(entity)
+                : throw new UnauthorizedAccessException(
+                    $"Cannot save {typeof(T).Name}: the scope in force does not permit writing it."),
+            _ => inner.Save(entity));
 
     public async Task Delete<T>(Guid id) where T : notnull
     {
-        if (registry.HasScope<T>())
-        {
-            var result = await memory.Vault<T>().Load(id);
-            result.Switch(
-                record =>
-                {
-                    if (!registry.ScopeFor<T>().CanDelete(record, filter))
-                        throw new UnauthorizedAccessException(
-                            $"Access denied: cannot delete {typeof(T).Name} {id} — CanDelete returned false.");
-                },
-                _ => { }
-            );
-        }
+        await scopes.Scope<T>().Match(
+            scope => Refused(scope, id),
+            _ => Task.CompletedTask);
         await inner.Delete<T>(id);
     }
 
-    public Task Commit() => inner.Commit();
+    public Task<OneOf<Committed, Stale>> Commit() => inner.Commit();
+
+    private async Task Refused<T>(IScope<T, TFilter> scope, Guid id) where T : notnull
+        => (await Memory().Vault<T>().Entity(id)).Switch(
+            entity =>
+            {
+                if (!scope.CanDelete(entity, filter))
+                    throw new UnauthorizedAccessException(
+                        $"Cannot delete {typeof(T).Name} {id}: the scope in force does not permit removing it.");
+            },
+            _ => { });
 }

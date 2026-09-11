@@ -1,11 +1,12 @@
 # Rebuild plan
 
-Settled in the design session of 2026-09-11. Nothing here has been implemented yet.
+Settled in the design session of 2026-09-11 and landed in full. This is kept as the record of
+what was decided and why; the shapes below are the shapes in the source tree, and the decisions
+themselves live on in CONTEXT.md, docs/adr/ and claude.md.
 
-The starting point: `Apia.sln` does not compile. One error, `CS1961` in `src/Apia/IAggregateSource.cs:12`
-(`in TQuery` is contravariant where it must be invariant), in the core project, so nothing downstream
-builds. With that one annotation removed the solution builds clean with no CS warnings and all 18 tests
-pass. Two of three backends have no tests at all, and the Postgres write path is a silent no-op.
+The starting point was a solution that did not compile: one `CS1961` in `src/Apia/IAggregateSource.cs`,
+in the core project, so nothing downstream built. Two of three backends had no tests at all, and the
+Postgres write path was a silent no-op.
 
 ## Decisions
 
@@ -62,45 +63,38 @@ Composition, the same identities across every backend:
 ```csharp
 var identities = new Identities().With(new UserId()).With(new PostId()).With(new CommentId());
 
-var ram = new RamMemory(identities, new RamOverrides());
-var pg  = new PostgresMemory(session, identities, new PostgresOverrides().With(new PostgresUserFeed()));
+var ram = new RamMemory(identities, new Overrides());
+var pg  = new PostgresMemory(documentStore, identities, new Overrides().With(new PostgresUserFeed(documentStore)));
 ```
 
-## Pull requests
+## Landed
 
-### 1. Heal and clear out
+All four steps below are in the source tree.
 
-Pure subtraction. Takes no design decision and unblocks everything else.
+### 1. Heal and clear out — landed
 
-- Remove `in TQuery` from `IAggregateSource<out T, in TQuery>`, so the solution builds
-- Replace the truncate-then-write in `FileEntityStore.WriteUnsafe` with a temp file and `File.Move`.
-  `FileMode.Create` empties the file before serialising, so any exception loses the whole type's data
-- Delete `src/Apia.Scoped/` (never compiled, references types that do not exist)
-- Delete the policy mechanism: `IAccessPolicy`, `AccessPolicy`, `IPolicies`, `Policies`,
-  `PolicyMemory`, `PolicyEnforcedBranch`, `PolicyEnforcedVault`. 218 lines, zero callers
-- Delete `Conflict.cs`, zero callers
-- Remove the dead `<see cref>` tags and switch `GenerateDocumentationFile` on so they cannot come back
-- Drop the `Apia.Scoped` line from README, add a staleness note to `blog-article.md`
+Pure subtraction: the variance error removed so the solution builds, the truncate-then-write in
+`FileEntityStore` replaced by a pending file and a rename, `src/Apia.Scoped/` and the parallel policy
+mechanism and `Conflict.cs` deleted, dead `<see cref>` tags removed and documentation generation
+switched on so they cannot come back, the readme corrected and the blog article marked stale.
 
-Exit: solution builds, 18 tests still green, roughly 280 dead lines gone.
+### 2. Core and Ram — landed
 
-### 2. Core and Ram
+`IAggregateQuery<T>` / `IProjectionQuery<T>`, `IIdentities` and `IOverrides` as decorators with fluent
+extension methods, `StagedVault` so a branch reads its own writes, versions in every store, `Stale` on
+commit, `IScope` with `Condition` and no default implementations, the entity vocabulary, and the
+contract suite as a `[SkippableTheory]` over a `ClassData` backend provider.
 
-- The interfaces above, `Identities` / `Overrides` as decorators with fluent extension methods
-- Staged overlay vault so a branch reads its own writes
-- Versions in `RamEntityStore`, `Stale` on commit, snapshot and restore for rollback
-- `IScope`: `AsLinq` → `Condition`, default implementations removed
-- Rename `PostRecord`/`UserRecord`/`CommentRecord` to `Post`/`User`/`Comment`
-- The contract suite starts here, as a `[Theory]` over a `ClassData` backend provider
+### 3. File — landed
 
-### 3. File
+Shrunk to `FileEntityStore` plus `FileStores` and `FileMemory`. One write per type per commit, rename
+atomicity per type, and the note that atomicity across types is not reachable on this medium written
+into `FileMemory`'s own documentation. Joined the contract suite.
 
-Shrinks to `FileEntityStore` plus composition. One write per type per commit, rename atomicity per
-type, and a written note that atomicity across types is not reachable on this medium. Joins the
-contract suite.
+### 4. Postgres — landed
 
-### 4. Postgres
-
-Rewritten against the Marten session. `PostgresBranch.Save` and `Delete` currently build a
-`Task<Action>` whose lambda is never invoked, so nothing is ever written. A faked `IDocumentSession`
-guards that class of bug without Docker; the contract entry runs in CI.
+Rewritten against the Marten session: `PostgresEntityStore` writes into the session and
+`PostgresBranch` saves it, so a commit is one transaction. A substituted `IDocumentSession` guards the
+class of bug that shipped — a call built into a value and never invoked — without Docker; the contract
+entry runs wherever `APIA_POSTGRES_CONNECTION` is set, and is reported as skipped by name where it is
+not.

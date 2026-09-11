@@ -1,404 +1,261 @@
 # Apia
 
-A storage abstraction library for .NET 9. Apia gives use cases a single interface — `IMemory` — through which they read and write data, without knowing or caring which backend stores it.
+A storage abstraction for .NET 9. A use case is written against one container — `IMemory` — and neither
+knows nor cares which backend holds the entities. Swapping the storage technique, and faking it wholesale
+in tests, is a change of composition and nothing else.
 
 ---
 
-## The core idea
-
-Business logic should not be coupled to storage infrastructure. A use case that posts to a user feed, registers a new account, or computes a report should be expressible in terms of records and queries — not SQL statements, file paths, or Cosmos DB change feeds.
-
-Apia provides three read operations on `IMemory`:
-
-| Method | What it does |
-|---|---|
-| `Aggregate<T>(query)` | Streams multiple results for a query over entities of type `T` |
-| `Projection<T>(query)` | Returns a single computed result for a query |
-| `Vault<T>().Load(id)` | Reads a single entity by `Guid` |
-
-All three are accessed through `IMemory`. Use cases receive `IMemory` as a dependency and compose storage operations from it:
+## The read surface
 
 ```csharp
 public interface IMemory
 {
-    IAsyncEnumerable<T> Aggregate<T>(object query);
-    Task<T> Projection<T>(object query);
-    IVault<T> Vault<T>();
-    IBranch Branch();
+    IAsyncEnumerable<T> Aggregate<T>(IAggregateQuery<T> query);
+    Task<T>             Projection<T>(IProjectionQuery<T> query);
+    IVault<T>           Vault<T>();
+    IBranch             Branch();
+}
+
+public interface IVault<T>
+{
+    Task<OneOf<T, NotFound>> Entity(Guid id);
+    IAsyncEnumerable<T>      All();
+    IAsyncEnumerable<T>      Matching(Expression<Func<T, bool>> condition);
 }
 ```
 
-Use cases read through `Aggregate`, `Projection`, and `Vault`. They write through a `Branch` — a unit of work that stages changes and flushes them atomically on `Commit`.
+`Entity` returns `OneOf<T, NotFound>`: no `null`, no `KeyNotFoundException`. `Matching` is the single
+channel through which a backend pushes filtering into its own query language.
 
-The use case does not reference any backend. It works identically against in-memory, file-based, or PostgreSQL storage — and against any future backend that implements `IMemory`.
+---
+
+## Composing a memory
+
+A memory is finished the moment it is constructed. There is no build step to forget. Its whole
+configuration is the identities of the stored types, which are backend-neutral and reused everywhere:
+
+```csharp
+var identities = new Identities().With(new UserId()).With(new PostId()).With(new CommentId());
+
+var prototype  = new RamMemory(identities, new Overrides());
+var onDisk     = new FileMemory("/var/lib/myapp", identities, new Overrides());
+var inPostgres = new PostgresMemory(documentStore, identities, new Overrides());
+```
+
+An identity says where an entity keeps its id:
+
+```csharp
+public sealed class PostId : IIdentity<Post>
+{
+    public Guid Of(Post entity) => entity.PostId;
+}
+```
+
+Starting on `RamMemory` costs nothing, and moving to disk or to SQL touches the composition and no use
+case.
+
+---
+
+## Queries
+
+A query states the type it returns and carries its own implementation, reading through whatever memory
+it is handed. Nothing is registered, so forgetting a registration is not a class of bug that exists,
+and the compiler rejects a query paired with the wrong result type.
+
+```csharp
+public interface IAggregateQuery<T>  { IAsyncEnumerable<T> Results(IMemory memory); }
+public interface IProjectionQuery<T> { Task<T> Result(IMemory memory); }
+```
+
+An aggregate returns many results; a projection returns exactly one computed result.
+
+```csharp
+public sealed class UserFeed(Guid userId, int limit) : IAggregateQuery<UserPostSummary>
+{
+    public async IAsyncEnumerable<UserPostSummary> Results(IMemory memory)
+    {
+        var author = await memory.Vault<User>().Entity(userId);
+        ...
+    }
+}
+
+await foreach (var summary in memory.Aggregate(new UserFeed(userId, 20)))
+    Console.WriteLine(summary.Content);
+```
+
+The same query text runs unchanged on Ram, on File and on Postgres.
+
+---
+
+## Backend overrides
+
+When a backend can answer a query better than the generic path, the composition may supply an override.
+It is chosen where the application is wired together, never in a use case, and a use case never sees its
+type. A missing override is the normal case and falls through to the query's own implementation.
+
+```csharp
+public sealed class PostgresUserFeed(IDocumentStore store) : IAggregateOverride<UserFeed, UserPostSummary>
+{
+    public IAsyncEnumerable<UserPostSummary> Results(UserFeed query, IMemory memory) => ...;
+}
+
+var memory = new PostgresMemory(
+    documentStore,
+    identities,
+    new Overrides().With(new PostgresUserFeed(documentStore)));
+```
+
+The constraint tying a query to the type it returns lives on `With`, so a wiring mistake is a build
+error rather than a production one.
+
+An override reads past the vault, and therefore past any scope. That is accepted and written down in
+[ADR-0001](docs/adr/0001-backend-overrides-bypass-scopes.md): registering one for a query that touches
+scope-protected entities is a security decision, not only a performance decision.
+
+---
+
+## Branches
+
+A branch is a unit of work, and it is a memory you can read.
+
+```csharp
+public interface IBranch
+{
+    IMemory Memory();
+    Task Save<T>(T entity);
+    Task Delete<T>(Guid id);
+    Task<OneOf<Committed, Stale>> Commit();
+}
+```
+
+`Memory()` hands back a memory whose vaults answer from what the branch staged, layered over what is
+committed — so writing and then reading inside one unit of work returns what was just written, and any
+query you already have runs inside the branch unchanged.
+
+```csharp
+var branch = memory.Branch();
+await branch.Save(post with { LikeCount = post.LikeCount + 1 });
+
+// reads the like it just staged
+await foreach (var summary in branch.Memory().Aggregate(new UserFeed(userId, 20))) { }
+
+await branch.Commit();
+```
+
+### Stale commits
+
+A commit reports `Stale` when an entity the branch read by id changed underneath it since the read.
+The outcome is in the return type rather than thrown, so handling it is something the compiler reminds
+you about:
+
+```csharp
+(await branch.Commit()).Match(
+    committed => Log("saved"),
+    stale     => Log("someone else got there first"));
+```
+
+Nothing is written when a commit reports `Stale`.
+
+### Commit atomicity, per backend
+
+Every staged change is resolved to the id it will be written under before any store is touched, so an
+entity that cannot be identified costs a commit nothing rather than half of it. Beyond that, the medium
+decides:
+
+| Backend | What a commit guarantees |
+|---|---|
+| `Apia.Ram` | All or nothing. Applying resolved changes in process cannot fail |
+| `Apia.File` | Each entity type's file is written once and replaced by a rename, so an interrupted write cannot empty or half-write a type. Atomicity **across** entity types is not reachable on this medium and is not attempted |
+| `Apia.Postgres` | All or nothing. A commit is one Marten transaction across every type it touches |
+
+---
+
+## Scopes
+
+A scope decides what is visible, writable and deletable for one filter value — the id of the signed-in
+user, say. Every scope states all three rules: "anything you can see, you can change" is a decision
+someone made rather than a default nobody read.
+
+```csharp
+public sealed class AuthorScope : IScope<Post, Guid>
+{
+    public bool Includes(Post entity, Guid authorId)  => entity.AuthorId == authorId;
+    public bool CanWrite(Post entity, Guid authorId)  => entity.AuthorId == authorId;
+    public bool CanDelete(Post entity, Guid authorId) => entity.AuthorId == authorId;
+
+    public OneOf<Expression<Func<Post, bool>>, None> Condition(Guid authorId)
+        => (Expression<Func<Post, bool>>)(post => post.AuthorId == authorId);
+}
+
+var scoped = new ScopeMemory<Guid>(
+    memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), signedInUserId);
+```
+
+A query's own implementation reads through the vault, so the scope holds inside it. `Condition` lets a
+backend push the rule into its own query language instead of fetching everything and discarding most of
+it. An id outside the scope reads as `NotFound`, indistinguishable from a genuine miss.
+
+`ScopeMemory` is not a complete boundary: a backend override reads past it. See
+[ADR-0001](docs/adr/0001-backend-overrides-bypass-scopes.md).
 
 ---
 
 ## Backends
 
-Three backends ship out of the box:
-
 | Backend | When to use |
 |---|---|
-| `Apia.Ram` | Tests, prototypes, single-process in-memory state |
-| `Apia.File` | Small apps, CLIs, dev environments, offline-capable tools |
+| `Apia.Ram` | Tests, prototypes, single-process state |
+| `Apia.File` | Small apps, CLIs, dev environments, offline tools |
 | `Apia.Postgres` | Production, multi-instance deployments, relational queries |
 
-Every backend implements `IMemoryMap` and produces an `IMemory`. Entity types and query sources are registered before calling `Build`:
-
-```csharp
-// In tests
-var map = new RamMemoryMap();
-map.RegisterStore<PostRecord>(new PostRecordId());
-map.RegisterStore<UserRecord>(new UserRecordId());
-var memory = map.Build();
-
-// In production — swap the map, nothing else changes
-var map = new PostgresMemoryMap(connectionString);
-map.RegisterStore<PostRecord>(new PostRecordId());
-map.RegisterStore<UserRecord>(new UserRecordId());
-var memory = map.Build();
-```
-
-`IIdentity<T>` tells the store how to extract the entity's `Guid`:
-
-```csharp
-public sealed class PostRecordId : IIdentity<PostRecord>
-{
-    public Guid Of(PostRecord entity) => entity.PostId;
-}
-```
-
-The same use cases run against both.
+Marten decides for itself which member of an entity carries its id, so a document store handed to
+`PostgresMemory` must be configured to agree with the identities. Apia does not configure Marten.
 
 ---
 
-## Reading with Aggregate and Vault
+## Testing
 
-### AllOf\<T\> — stream all entities
-
-```csharp
-await foreach (var post in memory.Aggregate<PostRecord>(new AllOf<PostRecord>()))
-    Console.WriteLine(post.Content);
-```
-
-### LinqQuery\<T\> — filter with a predicate
-
-```csharp
-var userPosts = memory.Aggregate<PostRecord>(
-    new LinqQuery<PostRecord>(p => p.AuthorId == userId));
-```
-
-SQL-capable backends translate the predicate to a `WHERE` clause; others compile and apply it in-process.
-
-### Vault — load a single entity by id
-
-```csharp
-var result = await memory.Vault<UserRecord>().Load(userId);
-
-result.Match(
-    user     => Console.WriteLine($"Found: {user.Username}"),
-    notFound => Console.WriteLine("No such user")
-);
-```
-
-`Load` returns `OneOf<T, NotFound>` — no `null`, no `KeyNotFoundException`.
-
----
-
-## Writing through a Branch
-
-Mutations go through `IBranch`. A branch stages `Save` and `Delete` operations and flushes them when `Commit` is called:
-
-```csharp
-public interface IBranch
-{
-    IAsyncEnumerable<T> Aggregate<T>(object query);
-    Task<T> Projection<T>(object query);
-
-    Task Save<T>(T entity);
-    Task Delete<T>(Guid id);
-
-    Task Commit();
-}
-```
-
-```csharp
-public sealed class RegisterUserUseCase(IMemory memory)
-{
-    public async Task<UserRecord> Execute(string username)
-    {
-        var user = new UserRecord(Guid.NewGuid(), username);
-        var branch = memory.Branch();
-        await branch.Save(user);
-        await branch.Commit();
-        return user;
-    }
-}
-```
-
-Calling `Branch()` multiple times gives independent units of work. Each `Commit` is an atomic flush of its staged operations. `IBranch` also exposes `Aggregate` and `Projection` — pass a query to read within the same unit of work.
-
----
-
-## Custom aggregate sources
-
-For queries that span multiple entity types or need domain-specific filtering, implement `IAggregateSource<TResult, TQuery>` and register it with the memory map.
-
-A custom query type carries its parameters and implements `IQuery<TSelf>` (the self-seed pattern):
-
-```csharp
-public record UserFeedQuery(Guid UserId, int Limit) : IQuery<UserFeedQuery>
-{
-    public UserFeedQuery Seed() => this;
-}
-```
-
-The source receives the query and an `IMemory` it can use to pull data from any registered store:
-
-```csharp
-public sealed class UserFeedProjection : IAggregateSource<UserPostSummaryView, UserFeedQuery>
-{
-    public async IAsyncEnumerable<UserPostSummaryView> From(IQuery<UserFeedQuery> query, IMemory memory)
-    {
-        var q = query.Seed();
-
-        var author = await memory.Vault<UserRecord>().Load(q.UserId);
-        if (author.IsT1) yield break;
-
-        var userPosts = new List<PostRecord>();
-        await foreach (var post in memory.Aggregate<PostRecord>(
-                           new LinqQuery<PostRecord>(p => p.AuthorId == q.UserId)))
-            userPosts.Add(post);
-
-        var commentCounts = new Dictionary<Guid, int>();
-        await foreach (var comment in memory.Aggregate<CommentRecord>(new AllOf<CommentRecord>()))
-            if (userPosts.Any(p => p.PostId == comment.PostId))
-                commentCounts[comment.PostId] = commentCounts.GetValueOrDefault(comment.PostId) + 1;
-
-        foreach (var post in userPosts.OrderByDescending(p => p.CreatedAt).Take(q.Limit))
-        {
-            commentCounts.TryGetValue(post.PostId, out var commentCount);
-            yield return new UserPostSummaryView(
-                PostId:       post.PostId,
-                AuthorName:   author.AsT0.Username,
-                Content:      post.Content,
-                LikeCount:    post.LikeCount,
-                CommentCount: commentCount,
-                CreatedAt:    post.CreatedAt
-            );
-        }
-    }
-}
-```
-
-Register it alongside the stores:
-
-```csharp
-map.RegisterStore<UserRecord>(new UserRecordId());
-map.RegisterStore<PostRecord>(new PostRecordId());
-map.RegisterStore<CommentRecord>(new CommentRecordId());
-map.RegisterQuery<UserPostSummaryView, UserFeedQuery>(new UserFeedProjection());
-```
-
-| Registration method | Registers |
-|---|---|
-| `RegisterStore<T>(IIdentity<T>)` | A mutable entity store for type `T` |
-| `RegisterQuery<T, TQuery>(IAggregateSource<T, TQuery>)` | A multi-result query source |
-| `RegisterProjection<T, TQuery>(IProjectionSource<T, TQuery>)` | A single-result projection source |
-
-A Postgres-native variant of the same projection can use SQL joins and indexes while sharing the same `UserFeedQuery` and `UserPostSummaryView` types. Callers do not change.
-
----
-
-## Use case reusability
-
-Because use cases depend only on `IMemory`, they are backend-agnostic by construction. This has two practical consequences.
-
-**Testing without a database.** Every use case can be tested with `RamMemoryMap`. No mocks, no test containers, no network. Tests are fast and deterministic.
+Every use case can be exercised against `RamMemory`: no mocks, no containers, no network.
 
 ```csharp
 [Fact]
 public async Task PostAppearsInFeed()
 {
-    var map = new RamMemoryMap();
-    map.RegisterStore<UserRecord>(new UserRecordId());
-    map.RegisterStore<PostRecord>(new PostRecordId());
-    map.RegisterStore<CommentRecord>(new CommentRecordId());
-    map.RegisterQuery<UserPostSummaryView, UserFeedQuery>(new UserFeedProjection());
-    var memory = map.Build();
-
-    var user = new UserRecord(Guid.NewGuid(), "alice");
+    var memory = new RamMemory(
+        new Identities().With(new UserId()).With(new PostId()).With(new CommentId()),
+        new Overrides());
+    var user = new User(Guid.NewGuid(), "alice");
     var branch = memory.Branch();
     await branch.Save(user);
     await branch.Commit();
 
-    await new CreatePostUseCase(memory).Execute(user.UserId, "Hello, world");
+    await new CreatePost(memory).Execute(user.UserId, "Hello, world");
 
-    var feed = await memory
-        .Aggregate<UserPostSummaryView>(new UserFeedQuery(user.UserId, Limit: 10))
-        .ToListAsync();
-
-    Assert.Single(feed);
-    Assert.Equal("Hello, world", feed[0].Content);
+    Assert.Single(await memory.Aggregate(new UserFeed(user.UserId, 10)).ToListAsync());
 }
 ```
 
-**Incremental backend migration.** A use case written today against `RamMemoryMap` runs on PostgreSQL tomorrow without changing a single line of business logic.
+The library's own suite works the same way: one contract suite runs through the memory against every
+backend, so a backend that does not actually write cannot be green. A backend this machine cannot reach
+is reported as skipped by name, so a green local run cannot be mistaken for full coverage. Set
+`APIA_POSTGRES_CONNECTION` to include Postgres.
 
 ---
 
-## Staged development
+## Vocabulary
 
-Apia is designed for teams that want to ship quickly and optimize deliberately.
-
-**Stage 1 — standard stores.** Start with `RamMemoryMap` in tests and `FileMemoryMap` or `PostgresMemoryMap` in production. Write all use cases against `IMemory`. Performance is predictable and sufficient for most early workloads.
-
-**Stage 2 — targeted optimization.** When profiling reveals a bottleneck — an aggregate source that full-scans a collection, an entity store on a hot path — replace that specific registration with a specialized implementation. A Postgres-native aggregate source for a slow query; a custom `IEntityStore<T>` backed by Redis for a high-throughput catalog. Everything else stays unchanged.
-
-**Stage 3 — cross-cutting instrumentation.** Because every read goes through `IMemory.Aggregate`, `IMemory.Projection`, and `IVault<T>`, measuring decorators, caching layers, and audit logs can wrap any backend uniformly:
-
-```csharp
-public sealed class TimedAggregateSource<T>(IAggregateSource<T> inner, IMetrics metrics) : IAggregateSource<T>
-{
-    public IAsyncEnumerable<T> From(object query)
-    {
-        using var _ = metrics.Time($"aggregate.{typeof(T).Name}");
-        return inner.From(query);
-    }
-}
-```
-
-The use cases that call `memory.Aggregate<T>(query)` do not know the decorator is there.
-
----
-
-## Example: a social feed application
-
-The following use cases cover typical operations in a feed-style application. Each takes only `IMemory`.
-
-### Register a user
-
-```csharp
-public sealed class RegisterUserUseCase(IMemory memory)
-{
-    public async Task<UserRecord> Execute(string username)
-    {
-        var user = new UserRecord(Guid.NewGuid(), username);
-        var branch = memory.Branch();
-        await branch.Save(user);
-        await branch.Commit();
-        return user;
-    }
-}
-```
-
-### Create a post
-
-```csharp
-public sealed class CreatePostUseCase(IMemory memory)
-{
-    public async Task<OneOf<PostRecord, NotFound>> Execute(Guid authorId, string content)
-    {
-        var author = await memory.Vault<UserRecord>().Load(authorId);
-        if (author.IsT1)
-            return new NotFound();
-
-        var post = new PostRecord(
-            PostId:         Guid.NewGuid(),
-            AuthorId:       authorId,
-            Content:        content,
-            LikeCount:      0,
-            LikedByUserIds: ImmutableHashSet<Guid>.Empty,
-            CreatedAt:      DateTime.UtcNow);
-
-        var branch = memory.Branch();
-        await branch.Save(post);
-        await branch.Commit();
-        return post;
-    }
-}
-```
-
-### Like a post
-
-```csharp
-public sealed class LikePostUseCase(IMemory memory)
-{
-    public async Task<OneOf<PostRecord, NotFound>> Execute(Guid postId, Guid userId)
-    {
-        var loaded = await memory.Vault<PostRecord>().Load(postId);
-        if (loaded.IsT1)
-            return new NotFound();
-
-        var updated = loaded.AsT0 with
-        {
-            LikeCount      = loaded.AsT0.LikeCount + 1,
-            LikedByUserIds = loaded.AsT0.LikedByUserIds.Add(userId)
-        };
-
-        var branch = memory.Branch();
-        await branch.Save(updated);
-        await branch.Commit();
-        return updated;
-    }
-}
-```
-
-### Add a comment
-
-```csharp
-public sealed class AddCommentUseCase(IMemory memory)
-{
-    public async Task<OneOf<CommentRecord, NotFound>> Execute(Guid postId, Guid authorId, string text)
-    {
-        var post = await memory.Vault<PostRecord>().Load(postId);
-        if (post.IsT1)
-            return new NotFound();
-
-        var comment = new CommentRecord(Guid.NewGuid(), postId, authorId, text, DateTime.UtcNow);
-        var branch = memory.Branch();
-        await branch.Save(comment);
-        await branch.Commit();
-        return comment;
-    }
-}
-```
-
-### Read the feed
-
-```csharp
-public sealed class GetUserFeedUseCase(IMemory memory)
-{
-    public IAsyncEnumerable<UserPostSummaryView> Execute(Guid userId, int limit)
-        => memory.Aggregate<UserPostSummaryView>(new UserFeedQuery(userId, limit));
-}
-```
-
----
-
-## Who this is for
-
-Apia is a good fit for teams that:
-
-- Write automated tests and want them fast — `RamMemoryMap` makes every use case testable without a running database
-- Value use case portability — the same business logic runs in a CLI tool, a web API, a background worker, and a test harness
-- Prefer explicit error modeling — `OneOf<T, NotFound>` eliminates silent null returns and exception-based control flow
-- Expect to grow — starting simple and migrating specific stores to optimized implementations as load increases is a deliberate, supported path
-
-Apia is a less natural fit for teams that:
-
-- Need complex cross-entity relational queries from day one — projections help, but Apia is not a query engine
-- Have existing ORM-heavy codebases where the repository pattern is already deeply established
-- Require fine-grained database schema control — the Postgres backend uses Marten (document store semantics) rather than hand-crafted tables
+The word for the thing that is stored is **entity**. The full glossary — memory, vault, store, branch,
+commit, stale, aggregate, projection, override, scope, filter — lives in [CONTEXT.md](CONTEXT.md).
 
 ---
 
 ## Installation
 
-```
-dotnet add package Apia
-dotnet add package Apia.Ram       # in-memory backend
-dotnet add package Apia.File      # file-based backend
-dotnet add package Apia.Postgres  # PostgreSQL via Marten
-```
+The projects are consumed from source. No package is published.
+
+---
+
+## License
+
+MIT. See [LICENSE](LICENSE).

@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Text.Json;
 using OneOf;
 using Apia;
@@ -5,77 +6,72 @@ using Apia;
 namespace Apia.File;
 
 /// <summary>
-/// File-backed entity store. Persists entities as JSON in a single file per type. A write serialises
-/// into a pending file beside it and renames that over the type's file, so a write that fails leaves
-/// the previously stored entities untouched.
+/// The on-disk persistence of entities of type T, as JSON in a single file per type. A write serialises
+/// the whole type into a pending file beside it and renames that over the type's file, so a write that
+/// fails leaves the previously stored entities untouched.
 /// </summary>
 public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) : IEntityStore<T> where T : notnull
 {
     private readonly string path = Path.Combine(directory, $"{typeof(T).Name}.json");
     private readonly SemaphoreSlim fileLock = new(1, 1);
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions JsonOptions =
+        new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
-    public async Task<OneOf<T, NotFound>> Get(Guid id)
-    {
-        var store = await Read();
-        return store.TryGetValue(id, out var entity)
-            ? OneOf<T, NotFound>.FromT0(entity!)
+    public async Task<OneOf<Versioned<T>, NotFound>> Entity(Guid id)
+        => (await Read()).TryGetValue(id, out var stored)
+            ? OneOf<Versioned<T>, NotFound>.FromT0(stored)
             : new NotFound();
-    }
 
     public async IAsyncEnumerable<T> All()
     {
-        foreach (var entity in (await Read()).Values)
-            yield return entity;
+        foreach (var stored in (await Read()).Values)
+            yield return stored.Entity;
     }
 
-    public async Task Set(T entity)
+    public IAsyncEnumerable<T> Matching(Expression<Func<T, bool>> condition) => All().Where(condition.Compile());
+
+    public async Task Write(IReadOnlyCollection<T> saved, IReadOnlyCollection<Guid> removed)
     {
-        var id = identity.Of(entity);
         await fileLock.WaitAsync();
-        try
-        {
-            var store = await ReadUnsafe();
-            store[id] = entity;
-            await WriteUnsafe(store);
-        }
+        try { await WriteUnsafe(Applied(await ReadUnsafe(), saved, removed)); }
         finally { fileLock.Release(); }
     }
 
-    public async Task Remove(Guid id)
-    {
-        await fileLock.WaitAsync();
-        try
-        {
-            var store = await ReadUnsafe();
-            store.Remove(id);
-            await WriteUnsafe(store);
-        }
-        finally { fileLock.Release(); }
-    }
-
-    private async Task<Dictionary<Guid, T>> Read()
+    private async Task<Dictionary<Guid, Versioned<T>>> Read()
     {
         await fileLock.WaitAsync();
         try { return await ReadUnsafe(); }
         finally { fileLock.Release(); }
     }
 
-    private async Task<Dictionary<Guid, T>> ReadUnsafe()
+    private async Task<Dictionary<Guid, Versioned<T>>> ReadUnsafe()
     {
         if (!System.IO.File.Exists(path))
-            return new();
+            return new Dictionary<Guid, Versioned<T>>();
         await using var stream = System.IO.File.OpenRead(path);
-        return await JsonSerializer.DeserializeAsync<Dictionary<Guid, T>>(stream, JsonOptions) ?? new();
+        return await JsonSerializer.DeserializeAsync<Dictionary<Guid, Versioned<T>>>(stream, JsonOptions)
+               ?? new Dictionary<Guid, Versioned<T>>();
     }
 
-    private async Task WriteUnsafe(Dictionary<Guid, T> store)
+    private Dictionary<Guid, Versioned<T>> Applied(
+        Dictionary<Guid, Versioned<T>> stored,
+        IEnumerable<T> saved,
+        IEnumerable<Guid> removed)
+    {
+        foreach (var entity in saved)
+            stored[identity.Of(entity)] = new Versioned<T>(entity, Guid.NewGuid());
+        foreach (var id in removed)
+            stored.Remove(id);
+        return stored;
+    }
+
+    private async Task WriteUnsafe(Dictionary<Guid, Versioned<T>> stored)
     {
         Directory.CreateDirectory(directory);
         var pending = Path.Combine(directory, $"{typeof(T).Name}.{Guid.NewGuid():N}.pending");
         try
         {
-            await Serialize(store, pending);
+            await Serialize(stored, pending);
             System.IO.File.Move(pending, path, overwrite: true);
         }
         catch
@@ -85,10 +81,10 @@ public sealed class FileEntityStore<T>(string directory, IIdentity<T> identity) 
         }
     }
 
-    private static async Task Serialize(Dictionary<Guid, T> store, string target)
+    private static async Task Serialize(Dictionary<Guid, Versioned<T>> stored, string target)
     {
         await using var stream = System.IO.File.Open(target, FileMode.Create, FileAccess.Write);
-        await JsonSerializer.SerializeAsync(stream, store, JsonOptions);
+        await JsonSerializer.SerializeAsync(stream, stored, JsonOptions);
         stream.Flush(flushToDisk: true);
     }
 
