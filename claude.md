@@ -38,3 +38,17 @@
 - Test classes have no private methods that are no tests
 - If records are needed for tests, place them in a seperate records folder in the test project
 - One Assert per test
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `Meerownymous/Apia`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, used verbatim as label strings. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
