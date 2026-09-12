@@ -179,6 +179,19 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
+    public async Task Branch_Memory_CountsItsOwnStagedSaves_ThroughAQuery(IBackend backend)
+    {
+        var author = Guid.NewGuid();
+        var branch = backend.Memory().Branch();
+        await branch.Save(new Post(Guid.NewGuid(), author, "staged", 0, DateTime.UtcNow));
+        await branch.Save(new Post(Guid.NewGuid(), author, "also staged", 0, DateTime.UtcNow));
+        await branch.Save(new Post(Guid.NewGuid(), Guid.NewGuid(), "someone else's", 0, DateTime.UtcNow));
+
+        Assert.Equal(2, await branch.Memory().Projection(new PostCount(author)));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
     public async Task Vault_Entity_ReturnsNotFound_WhenTheCommitFailed(IBackend backend)
     {
         var memory = backend.Memory();
