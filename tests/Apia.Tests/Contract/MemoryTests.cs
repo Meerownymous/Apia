@@ -123,6 +123,33 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
+    public async Task Aggregate_Results_AreEmpty_WhenTheAuthorWroteNothing(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var author = new User(Guid.NewGuid(), "Miro");
+        var branch = memory.Branch();
+        await branch.Save(author);
+        await branch.Save(new Post(Guid.NewGuid(), Guid.NewGuid(), "someone else's", 0, DateTime.UtcNow));
+        await branch.Commit();
+
+        Assert.Empty(await memory.Aggregate(new UserFeed(author.UserId, 20)).ToListAsync());
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Aggregate_Results_AreEmpty_WhenTheAuthorIsNotStored(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var unstoredAuthor = Guid.NewGuid();
+        var branch = memory.Branch();
+        await branch.Save(new Post(Guid.NewGuid(), unstoredAuthor, "written by nobody the memory holds", 0, DateTime.UtcNow));
+        await branch.Commit();
+
+        Assert.Empty(await memory.Aggregate(new UserFeed(unstoredAuthor, 20)).ToListAsync());
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
     public async Task Projection_Result_IsTheSameOnEveryBackend(IBackend backend)
     {
         var memory = backend.Memory();
@@ -294,6 +321,44 @@ public sealed class MemoryTests
                 .Aggregate(new AllPosts())
                 .ToListAsync())
             .Single().Content);
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Aggregate_Results_AreEmpty_WhenTheAuthorsPostsAreOutsideTheScope(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var reader = Guid.NewGuid();
+        var stranger = new User(Guid.NewGuid(), "Ralph");
+        var branch = memory.Branch();
+        await branch.Save(stranger);
+        await branch.Save(new Post(Guid.NewGuid(), stranger.UserId, "someone else's", 0, DateTime.UtcNow));
+        await branch.Save(new Post(Guid.NewGuid(), reader, "mine", 0, DateTime.UtcNow));
+        await branch.Commit();
+
+        Assert.Empty(
+            await new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), reader)
+                .Aggregate(new UserFeed(stranger.UserId, 20))
+                .ToListAsync());
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Projection_Result_CountsNothing_WhenTheEntitiesAreOutsideTheScope(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var author = Guid.NewGuid();
+        var stranger = Guid.NewGuid();
+        var branch = memory.Branch();
+        await branch.Save(new Post(Guid.NewGuid(), author, "mine", 0, DateTime.UtcNow));
+        await branch.Save(new Post(Guid.NewGuid(), stranger, "someone else's", 0, DateTime.UtcNow));
+        await branch.Save(new Post(Guid.NewGuid(), stranger, "also someone else's", 0, DateTime.UtcNow));
+        await branch.Commit();
+
+        Assert.Equal(
+            0,
+            await new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), author)
+                .Projection(new PostCount(stranger)));
     }
 
     [SkippableTheory]
