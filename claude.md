@@ -37,7 +37,7 @@
 - Do not cast values to OneOf when not necessary (use implicit conversions)
 - Test classes have only methods that are tests, not more
 - Test classes have no private methods that are no tests
-- If records are needed for tests, place them in a seperate records folder in the test project
+- If records are needed for tests, place them in a folder of their own in the test project, named for what the types are (entities in `Entities`), never for the language construct
 - One Assert per test
 
 ## Agent skills

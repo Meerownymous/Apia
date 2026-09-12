@@ -1,4 +1,4 @@
-namespace Apia.Tests.Records;
+namespace Apia.Tests.Entities;
 
 public sealed record Post(
     Guid PostId,

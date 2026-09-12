@@ -1,4 +1,4 @@
-using Apia.Tests.Records;
+using Apia.Tests.Entities;
 
 namespace Apia.Tests.Identity;
 
