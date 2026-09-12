@@ -5,8 +5,8 @@ namespace Apia;
 
 /// <summary>
 /// Read access to the entities of type T as a branch sees them: what it staged, layered over what the
-/// store holds. Reading by id records the version read, which is what a commit compares against.
-/// Reading through <see cref="All"/> or <see cref="Matching"/> records nothing, so streaming a type
+/// store holds. Reading by id notes the version read, which is what a commit compares against.
+/// Reading through <see cref="All"/> or <see cref="Matching"/> notes nothing, so streaming a type
 /// does not make every entity of it a candidate for a stale commit.
 /// </summary>
 public sealed class StagedVault<T>(IEntityStore<T> store, Staged<T> staged, IIdentity<T> identity)
@@ -19,7 +19,7 @@ public sealed class StagedVault<T>(IEntityStore<T> store, Staged<T> staged, IIde
         if (staged.Removed.Contains(id))
             return new NotFound();
         return (await store.Entity(id))
-            .Match<OneOf<T, NotFound>>(stored => RecordedEntity(stored), missing => missing);
+            .Match<OneOf<T, NotFound>>(stored => NotedEntity(stored), missing => missing);
     }
 
     public IAsyncEnumerable<T> All() => Overlay(store.All());
@@ -27,7 +27,7 @@ public sealed class StagedVault<T>(IEntityStore<T> store, Staged<T> staged, IIde
     public IAsyncEnumerable<T> Matching(Expression<Func<T, bool>> condition)
         => Overlay(store.Matching(condition)).Where(condition.Compile());
 
-    private T RecordedEntity(Versioned<T> stored)
+    private T NotedEntity(Versioned<T> stored)
     {
         staged.Read[identity.Of(stored.Entity)] = stored.Version;
         return stored.Entity;

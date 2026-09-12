@@ -1,6 +1,6 @@
 using Apia.Postgres;
+using Apia.Tests.Entities;
 using Apia.Tests.Identity;
-using Apia.Tests.Records;
 using JasperFx;
 using Marten;
 

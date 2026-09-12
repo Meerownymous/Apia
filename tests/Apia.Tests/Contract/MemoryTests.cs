@@ -1,7 +1,7 @@
 using Apia.Scope;
 using Apia.Tests.Backend;
+using Apia.Tests.Entities;
 using Apia.Tests.Query;
-using Apia.Tests.Records;
 using Apia.Tests.Scoping;
 using Xunit;
 

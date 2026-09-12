@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 using Apia.Scope;
-using Apia.Tests.Records;
+using Apia.Tests.Entities;
 using OneOf;
 
 namespace Apia.Tests.Scoping;
