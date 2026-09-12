@@ -74,4 +74,38 @@ public sealed class ScopeTests
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await branch.Delete<Post>(post.PostId));
     }
+
+    [Fact]
+    public async Task Branch_Save_Stages_WhenTheScopeRefusesOnlyTheRemoval()
+    {
+        var author = Guid.NewGuid();
+        var post = new Post(Guid.NewGuid(), author, "mine", 0, DateTime.UtcNow);
+        var branch =
+            new ScopeMemory<Guid>(
+                    new RamMemory(new ExampleIdentities(), new Overrides()),
+                    new Overrides(),
+                    new Scopes<Guid>().With(new IndelibleAuthorScope()),
+                    author)
+                .Branch();
+        await branch.Save(post);
+        await branch.Commit();
+
+        Assert.Single(await branch.Memory().Vault<Post>().All().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Branch_Delete_Throws_WhenTheScopeRefusesOnlyTheRemoval()
+    {
+        var author = Guid.NewGuid();
+        var post = new Post(Guid.NewGuid(), author, "mine", 0, DateTime.UtcNow);
+        var memory = new RamMemory(new ExampleIdentities(), new Overrides());
+        var seeding = memory.Branch();
+        await seeding.Save(post);
+        await seeding.Commit();
+        var branch =
+            new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new IndelibleAuthorScope()), author)
+                .Branch();
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(async () => await branch.Delete<Post>(post.PostId));
+    }
 }
