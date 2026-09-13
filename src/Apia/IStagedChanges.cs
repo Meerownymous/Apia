@@ -4,8 +4,10 @@ namespace Apia;
 public interface IStagedChanges
 {
     /// <summary>
-    /// The entities of this type the branch read that no longer hold the version they were read at,
-    /// empty when every read still holds it.
+    /// The entities of this type the branch read whose store no longer answers what it answered then:
+    /// an id read at a version the store has moved past, and an id read as absent the store has since
+    /// been given an entity for. Empty when every read still holds. An id read as absent is named no
+    /// differently from one read at a version, so a caller cannot tell an arrival from a change.
     /// </summary>
     Task<IReadOnlyCollection<Changed>> StaleReads();
 

@@ -408,6 +408,70 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
+    public async Task Commit_ReportsStaleNamingTheEntity_WhenAnIdItReadAsAbsentExistsSince(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var reading = memory.Branch();
+        await reading.Memory().Vault<User>().Entity(user.UserId);
+        var meddling = memory.Branch();
+        await meddling.Save(user);
+        await meddling.Commit();
+        await reading.Save(user with { Username = "Bart" });
+
+        Assert.Equal(
+            new[] { new Changed(typeof(User), user.UserId) },
+            (await reading.Commit()).Match(
+                _ => throw new InvalidOperationException("Committed"),
+                stale => stale.Changes));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Commit_ReportsCommitted_WhenAnIdItReadAsAbsentIsStillAbsent(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var reading = memory.Branch();
+        await reading.Memory().Vault<User>().Entity(user.UserId);
+        await reading.Save(user);
+
+        Assert.True((await reading.Commit()).Match(_ => true, _ => false));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Commit_ReportsCommitted_WhenOnlyAStreamedTypeGainedAnEntitySince(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var streaming = memory.Branch();
+        await streaming.Memory().Vault<User>().All().ToListAsync();
+        var meddling = memory.Branch();
+        await meddling.Save(new User(Guid.NewGuid(), "Ralph"));
+        await meddling.Commit();
+        await streaming.Save(new User(Guid.NewGuid(), "Bart"));
+
+        Assert.True((await streaming.Commit()).Match(_ => true, _ => false));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Commit_ReportsCommitted_WhenTheBranchReadBackItsOwnRemoval(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var seeding = memory.Branch();
+        await seeding.Save(user);
+        await seeding.Commit();
+        var deleting = memory.Branch();
+        await deleting.Delete<User>(user.UserId);
+        await deleting.Memory().Vault<User>().Entity(user.UserId);
+
+        Assert.True((await deleting.Commit()).Match(_ => true, _ => false));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
     public async Task Vault_Entity_ReturnsWhatTheOtherBranchWrote_WhenTheCommitWentStale(IBackend backend)
     {
         var memory = backend.Memory();

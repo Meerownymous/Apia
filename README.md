@@ -181,9 +181,9 @@ await branch.Commit();
 
 ### Stale commits
 
-A commit reports `Stale` when an entity the branch read by id changed underneath it since the read.
-The outcome is in the return type rather than thrown, so handling it is something the compiler reminds
-you about:
+A commit reports `Stale` when the store no longer answers a read by id the way it answered it: an entity
+changed underneath the branch, or an id it was told held nothing now holds one. The outcome is in the
+return type rather than thrown, so handling it is something the compiler reminds you about:
 
 ```csharp
 (await branch.Commit()).Match(
@@ -198,12 +198,32 @@ branch that read a user and a post is told about both rather than about the firs
 
 Nothing is written when a commit reports `Stale`: the entity keeps the value the other branch gave it.
 
-A read by id is what a commit compares. Streaming a type through `All` or `Matching` notes nothing, so
-a branch that walked a type commits even when an entity it streamed changed meanwhile.
+An id read as absent counts as read. A branch told there is no entity under an id, which then stages
+one under it, goes stale when another branch got there first — so two branches creating the same entity
+ends the same way as two branches editing one, rather than with the second overwriting the first in
+silence:
 
-A commit compares the versions it read against the versions the stores hold and then writes, which
-catches a branch that read before another branch committed. It is not a lock: two commits running at
-the very same instant can both pass the comparison, and the later write wins.
+```csharp
+var branch = memory.Branch();
+
+// nothing under this id yet
+await branch.Memory().Vault<User>().Entity(id);
+await branch.Save(new User(id, "Miro"));
+
+// Stale, naming User id, if another branch committed a user under that id meanwhile
+await branch.Commit();
+```
+
+The `Changed` this reports is the one a changed entity reports, so nothing in the outcome distinguishes
+an id that gained an entity from an entity that was edited.
+
+A read by id is what a commit compares. Streaming a type through `All` or `Matching` notes nothing, so
+a branch that walked a type commits even when an entity it streamed changed, or a new one arrived in it,
+meanwhile.
+
+A commit compares what it read against what the stores hold and then writes, which catches a branch that
+read before another branch committed. It is not a lock: two commits running at the very same instant can
+both pass the comparison, and the later write wins.
 
 ### Commit atomicity, per backend
 
