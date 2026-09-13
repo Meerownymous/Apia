@@ -39,19 +39,14 @@ public sealed class OverrideTests
     }
 
     [Fact]
-    public async Task Aggregate_Results_AnswerWhatTheQueryAskedFor_WhenTheOverrideReadsIt()
+    public async Task Aggregate_Results_AnswerTheUserAndTheLimitTheQueryNamed()
     {
-        var author = new User(Guid.NewGuid(), "Miro");
-        var memory = new RamMemory(new ExampleIdentities(), new Overrides().With(new MatchedUserFeed()));
-        var branch = memory.Branch();
-        await branch.Save(author);
-        await branch.Save(new Post(Guid.NewGuid(), author.UserId, "mine", 0, DateTime.UtcNow));
-        await branch.Save(new Post(Guid.NewGuid(), Guid.NewGuid(), "someone else's", 0, DateTime.UtcNow));
-        await branch.Commit();
+        var user = Guid.NewGuid();
+        var memory = new RamMemory(new ExampleIdentities(), new Overrides().With(new HandWrittenUserFeed()));
 
         Assert.Equal(
-            "mine",
-            (await memory.Aggregate(new UserFeed(author.UserId, 20)).ToListAsync()).Single().Content);
+            new[] { user.ToString(), user.ToString(), user.ToString() },
+            (await memory.Aggregate(new UserFeed(user, 3)).ToListAsync()).Select(summary => summary.AuthorName));
     }
 
     [Fact]

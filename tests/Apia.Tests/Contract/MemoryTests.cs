@@ -165,25 +165,54 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
+    public async Task Aggregate_Results_ComeFromTheOverride_WhenOneWasGiven(IBackend backend)
+    {
+        var author = new User(Guid.NewGuid(), "Miro");
+        var memory = backend.Memory(new Overrides().With(new HandWrittenUserFeed()));
+        var branch = memory.Branch();
+        await branch.Save(author);
+        await branch.Save(new Post(Guid.NewGuid(), author.UserId, "from the store", 0, DateTime.UtcNow));
+        await branch.Commit();
+
+        Assert.Equal(3, (await memory.Aggregate(new UserFeed(author.UserId, 3)).ToListAsync()).Count);
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Projection_Result_ComesFromTheOverride_WhenOneWasGiven(IBackend backend)
+    {
+        var author = Guid.NewGuid();
+        var memory = backend.Memory(new Overrides().With(new HandWrittenPostCount(41)));
+        var branch = memory.Branch();
+        await branch.Save(new Post(Guid.NewGuid(), author, "from the store", 0, DateTime.UtcNow));
+        await branch.Commit();
+
+        Assert.Equal(41, await memory.Projection(new PostCount(author)));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
     public async Task Aggregate_Results_AreTheSame_WithAndWithoutAnOverride(IBackend backend)
     {
         var author = new User(Guid.NewGuid(), "Miro");
-        var post = new Post(Guid.NewGuid(), author.UserId, "Great unit test discovered", 1, DateTime.UtcNow);
-        var comment = new Comment(Guid.NewGuid(), post.PostId, Guid.NewGuid(), "Mine smells like cat food", DateTime.UtcNow);
+        var latest = new Post(Guid.NewGuid(), author.UserId, "Great unit test discovered", 1, DateTime.UtcNow);
+        var earlier = new Post(Guid.NewGuid(), author.UserId, "written first", 0, DateTime.UtcNow.AddMinutes(-1));
         var plain = backend.Memory();
-        var overridden = backend.Memory(new Overrides().With(new MatchedUserFeed()));
+        var overridden = backend.Memory(new Overrides().With(new ConditionedUserFeed()));
         foreach (var memory in new[] { plain, overridden })
         {
             var branch = memory.Branch();
             await branch.Save(author);
-            await branch.Save(post);
-            await branch.Save(comment);
+            await branch.Save(latest);
+            await branch.Save(earlier);
+            await branch.Save(new Post(Guid.NewGuid(), Guid.NewGuid(), "someone else's", 0, DateTime.UtcNow));
+            await branch.Save(new Comment(Guid.NewGuid(), latest.PostId, Guid.NewGuid(), "Mine smells like cat food", DateTime.UtcNow));
             await branch.Commit();
         }
 
         Assert.Equal(
-            (await plain.Aggregate(new UserFeed(author.UserId, 20)).ToListAsync()).Single(),
-            (await overridden.Aggregate(new UserFeed(author.UserId, 20)).ToListAsync()).Single());
+            (await plain.Aggregate(new UserFeed(author.UserId, 1)).ToListAsync()).Single(),
+            (await overridden.Aggregate(new UserFeed(author.UserId, 1)).ToListAsync()).Single());
     }
 
     [SkippableTheory]
@@ -192,7 +221,7 @@ public sealed class MemoryTests
     {
         var author = Guid.NewGuid();
         var plain = backend.Memory();
-        var overridden = backend.Memory(new Overrides().With(new MatchedPostCount()));
+        var overridden = backend.Memory(new Overrides().With(new ConditionedPostCount()));
         foreach (var memory in new[] { plain, overridden })
         {
             var branch = memory.Branch();
@@ -212,7 +241,7 @@ public sealed class MemoryTests
     public async Task Projection_Result_ComesFromTheQuery_WhenTheOverrideGivenIsForAnotherQuery(IBackend backend)
     {
         var author = Guid.NewGuid();
-        var memory = backend.Memory(new Overrides().With(new MatchedUserFeed()));
+        var memory = backend.Memory(new Overrides().With(new ConditionedUserFeed()));
         var branch = memory.Branch();
         await branch.Save(new Post(Guid.NewGuid(), author, "one", 0, DateTime.UtcNow));
         await branch.Save(new Post(Guid.NewGuid(), author, "two", 0, DateTime.UtcNow));

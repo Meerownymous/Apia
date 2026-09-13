@@ -6,9 +6,9 @@ namespace Apia.Tests.Query;
 /// A backend's own answer to <see cref="UserFeed"/>: the author's posts are picked out by a condition
 /// the backend evaluates, standing in for the single statement a storage technique would write by
 /// hand. It answers the user and the limit the query names, so the same question gets the same answer
-/// either way.
+/// either way. Every backend can run it, which a hand-written statement could not.
 /// </summary>
-public sealed class MatchedUserFeed : IAggregateOverride<UserFeed, UserPostSummary>
+public sealed class ConditionedUserFeed : IAggregateOverride<UserFeed, UserPostSummary>
 {
     public async IAsyncEnumerable<UserPostSummary> Results(UserFeed query, IMemory memory)
     {
