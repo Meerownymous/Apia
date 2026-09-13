@@ -152,16 +152,19 @@ you about:
 ```csharp
 (await branch.Commit()).Match(
     committed => Log("saved"),
-    stale     => Log($"someone else got there first: {Named(stale.Changes)}"));
-
-static string Named(IReadOnlyCollection<Changed> changes)
-    => string.Join(", ", changes.Select(changed => $"{changed.EntityType.Name} {changed.Id}"));
+    stale     => Log(
+        "someone else got there first: "
+        + string.Join(", ", stale.Changes.Select(changed => $"{changed.EntityType.Name} {changed.Id}"))));
 ```
 
 `Stale` carries a `Changed` per read that went stale, each naming the entity type and the id, so a
 branch that read a user and a post is told about both rather than about the first one noticed.
 
 Nothing is written when a commit reports `Stale`.
+
+A commit compares the versions it read against the versions the stores hold and then writes, which
+catches a branch that read before another branch committed. It is not a lock: two commits running at
+the very same instant can both pass the comparison, and the later write wins.
 
 ### Commit atomicity, per backend
 

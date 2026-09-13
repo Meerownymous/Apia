@@ -233,25 +233,6 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
-    public async Task Commit_ReportsStale_WhenAnEntityItReadChangedSince(IBackend backend)
-    {
-        var memory = backend.Memory();
-        var user = new User(Guid.NewGuid(), "Miro");
-        var seeding = memory.Branch();
-        await seeding.Save(user);
-        await seeding.Commit();
-        var reading = memory.Branch();
-        await reading.Memory().Vault<User>().Entity(user.UserId);
-        var meddling = memory.Branch();
-        await meddling.Save(user with { Username = "Ralph" });
-        await meddling.Commit();
-        await reading.Save(user with { Username = "Bart" });
-
-        Assert.True((await reading.Commit()).Match(_ => false, _ => true));
-    }
-
-    [SkippableTheory]
-    [ClassData(typeof(Backends))]
     public async Task Commit_ReportsCommitted_WhenNothingItReadChanged(IBackend backend)
     {
         var memory = backend.Memory();
@@ -268,7 +249,7 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
-    public async Task Commit_NamesTheEntityThatChanged_WhenItReportsStale(IBackend backend)
+    public async Task Commit_ReportsStaleNamingTheEntity_WhenAnEntityItReadChangedSince(IBackend backend)
     {
         var memory = backend.Memory();
         var user = new User(Guid.NewGuid(), "Miro");
@@ -291,7 +272,7 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
-    public async Task Commit_NamesTheChangedEntitiesOfEveryTypeItRead_WhenItReportsStale(IBackend backend)
+    public async Task Commit_ReportsStaleNamingEveryEntity_WhenEntitiesOfTwoTypesChangedSince(IBackend backend)
     {
         var memory = backend.Memory();
         var user = new User(Guid.NewGuid(), "Miro");
