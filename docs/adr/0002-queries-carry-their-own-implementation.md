@@ -16,3 +16,11 @@ The two-phase memory construction disappears with it (see ADR-0003), because a q
 memory when it runs rather than when it is registered. A query therefore reads through whichever memory
 it was asked through, which is what makes a branch's overlay and a scope reach inside it. Scopes stop at
 overrides (see ADR-0001).
+
+The plain defect reported alongside ADR-0001 in issue #12 goes with the registry rather than being
+accepted: a registered source was handed the unscoped memory at the moment the memory was built, so a
+scope could not reach inside such a source at all and a scope set to one author returned another
+author's entities. There is no longer a registration at which a memory could be frozen. The contract
+suite asserts the scope holding inside a query's own implementation on every backend, and the test
+project asserts that nothing published takes an untyped value and that a query is named only by a
+memory or by an override, so neither the registry nor the untyped path can return unnoticed.
