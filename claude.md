@@ -25,6 +25,7 @@
 - Decorator pattern is favorited (composable objects)
 - No internal methods, classes, or members
 - Classes that do not implement interfaces are forbidden, except record and record struct types that carry values and have no behaviour
+- A query is the one shape that may be a record and still carry behaviour: an override is handed the query object, so the values a query asks with have to be readable by something other than the query itself
 - Marker interfaces are forbidden
 - Reflection is forbidden, exception: type inspection
 - Public static methods that are not extensions are forbidde

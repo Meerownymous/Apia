@@ -39,6 +39,17 @@ public sealed class OverrideTests
     }
 
     [Fact]
+    public async Task Aggregate_Results_AnswerTheUserAndTheLimitTheQueryNamed()
+    {
+        var user = Guid.NewGuid();
+        var memory = new RamMemory(new ExampleIdentities(), new Overrides().With(new HandWrittenUserFeed()));
+
+        Assert.Equal(
+            new[] { user.ToString(), user.ToString(), user.ToString() },
+            (await memory.Aggregate(new UserFeed(user, 3)).ToListAsync()).Select(summary => summary.AuthorName));
+    }
+
+    [Fact]
     public async Task Projection_Result_ComesFromTheOverride_WhenOneWasGiven()
     {
         var memory = new RamMemory(new ExampleIdentities(), new Overrides().With(new HandWrittenPostCount(41)));

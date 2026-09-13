@@ -71,11 +71,11 @@ public interface IProjectionQuery<T> { Task<T> Result(IMemory memory); }
 An aggregate returns many results; a projection returns exactly one computed result.
 
 ```csharp
-public sealed class UserFeed(Guid userId, int limit) : IAggregateQuery<UserPostSummary>
+public sealed record UserFeed(Guid UserId, int Limit) : IAggregateQuery<UserPostSummary>
 {
     public async IAsyncEnumerable<UserPostSummary> Results(IMemory memory)
     {
-        var author = await memory.Vault<User>().Entity(userId);
+        var author = await memory.Vault<User>().Entity(UserId);
         ...
     }
 }
@@ -97,6 +97,7 @@ type. A missing override is the normal case and falls through to the query's own
 ```csharp
 public sealed class PostgresUserFeed(IDocumentStore store) : IAggregateOverride<UserFeed, UserPostSummary>
 {
+    // one statement, joined and grouped in the database, for the user and the limit the query names
     public IAsyncEnumerable<UserPostSummary> Results(UserFeed query, IMemory memory) => ...;
 }
 
@@ -106,8 +107,14 @@ var memory = new PostgresMemory(
     new Overrides().With(new PostgresUserFeed(documentStore)));
 ```
 
+An override is handed the query it answers, which is how it learns what was asked. A query that carries
+values therefore states them as values anyone holding it can read — the record above — because a value
+kept in a private field is reachable only by the query's own implementation.
+
 The constraint tying a query to the type it returns lives on `With`, so a wiring mistake is a build
-error rather than a production one.
+error rather than a production one. Asking a query no override was supplied for is not a failure: it
+runs its own implementation, which is what every query does until a project has a reason to do
+otherwise.
 
 An override reads past the vault, and therefore past any scope. That is accepted and written down in
 [ADR-0001](docs/adr/0001-backend-overrides-bypass-scopes.md): registering one for a query that touches
