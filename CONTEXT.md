@@ -27,7 +27,12 @@ it, and reach the stores only on commit.
 The flush of a branch. Either every staged change takes effect or none does.
 
 **Stale**:
-The outcome of a commit whose branch read an entity that changed underneath it.
+The outcome of a commit whose branch read an entity that changed underneath it. Names every read that
+went stale.
+
+**Changed**:
+An entity a branch read that another branch has written since, named by entity type and id. What a
+stale outcome carries.
 
 **Aggregate**:
 A query returning many results. Carries its own storage-agnostic implementation.

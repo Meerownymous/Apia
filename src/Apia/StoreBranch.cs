@@ -36,12 +36,24 @@ public sealed class StoreBranch(
         // Resolving every change first is what makes the commit all or nothing: an entity that cannot
         // be identified throws here, before the first store has been written to.
         var resolved = stagings.Changes().Select(changes => changes.Resolution()).ToList();
-        foreach (var changes in stagings.Changes())
-            if (!await changes.Unchanged())
-                return new Stale();
+        var stale = await StaleReads(stagings.Changes());
+        if (stale.Count > 0)
+            return new Stale(stale);
         foreach (var write in resolved)
             await write.Write();
         return new Committed();
+    }
+
+    /// <summary>
+    /// Every read that went stale, across every entity type the branch touched, so that the outcome
+    /// names all of what changed rather than the first type that noticed.
+    /// </summary>
+    private static async Task<IReadOnlyCollection<Changed>> StaleReads(IEnumerable<IStagedChanges> staged)
+    {
+        var stale = new List<Changed>();
+        foreach (var changes in staged)
+            stale.AddRange(await changes.StaleReads());
+        return stale;
     }
 
     private static void Remove<T>(Staged<T> staged, IIdentity<T> identity, Guid id) where T : notnull

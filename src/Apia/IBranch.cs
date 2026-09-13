@@ -18,8 +18,8 @@ public interface IBranch
     Task Delete<T>(Guid id) where T : notnull;
 
     /// <summary>
-    /// Writes every staged change, or reports <see cref="Stale"/> when an entity this branch read by id
-    /// changed since it was read, in which case nothing is written. Expected once per branch.
+    /// Writes every staged change, or reports <see cref="Stale"/> naming every entity this branch read
+    /// by id that changed since it was read, in which case nothing is written. Expected once per branch.
     /// </summary>
     Task<OneOf<Committed, Stale>> Commit();
 }
