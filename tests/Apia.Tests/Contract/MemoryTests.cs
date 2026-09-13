@@ -268,6 +268,59 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
+    public async Task Commit_NamesTheEntityThatChanged_WhenItReportsStale(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var seeding = memory.Branch();
+        await seeding.Save(user);
+        await seeding.Commit();
+        var reading = memory.Branch();
+        await reading.Memory().Vault<User>().Entity(user.UserId);
+        var meddling = memory.Branch();
+        await meddling.Save(user with { Username = "Ralph" });
+        await meddling.Commit();
+        await reading.Save(user with { Username = "Bart" });
+
+        Assert.Equal(
+            new[] { new Changed(typeof(User), user.UserId) },
+            (await reading.Commit()).Match(
+                _ => throw new InvalidOperationException("Committed"),
+                stale => stale.Changes));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Commit_NamesTheChangedEntitiesOfEveryTypeItRead_WhenItReportsStale(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var post = new Post(Guid.NewGuid(), user.UserId, "a thought", 0, DateTime.UtcNow);
+        var seeding = memory.Branch();
+        await seeding.Save(user);
+        await seeding.Save(post);
+        await seeding.Commit();
+        var reading = memory.Branch();
+        await reading.Memory().Vault<User>().Entity(user.UserId);
+        await reading.Memory().Vault<Post>().Entity(post.PostId);
+        var meddling = memory.Branch();
+        await meddling.Save(user with { Username = "Ralph" });
+        await meddling.Save(post with { LikeCount = 1 });
+        await meddling.Commit();
+
+        Assert.Equal(
+            new HashSet<Changed>
+            {
+                new(typeof(User), user.UserId),
+                new(typeof(Post), post.PostId)
+            },
+            (await reading.Commit()).Match(
+                _ => throw new InvalidOperationException("Committed"),
+                stale => stale.Changes.ToHashSet()));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
     public async Task Vault_Entity_ReturnsNotFound_WhenOutsideTheScope(IBackend backend)
     {
         var memory = backend.Memory();

@@ -152,8 +152,14 @@ you about:
 ```csharp
 (await branch.Commit()).Match(
     committed => Log("saved"),
-    stale     => Log("someone else got there first"));
+    stale     => Log($"someone else got there first: {Named(stale.Changes)}"));
+
+static string Named(IReadOnlyCollection<Changed> changes)
+    => string.Join(", ", changes.Select(changed => $"{changed.EntityType.Name} {changed.Id}"));
 ```
+
+`Stale` carries a `Changed` per read that went stale, each naming the entity type and the id, so a
+branch that read a user and a post is told about both rather than about the first one noticed.
 
 Nothing is written when a commit reports `Stale`.
 

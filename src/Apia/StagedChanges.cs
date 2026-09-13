@@ -4,12 +4,13 @@ namespace Apia;
 public sealed class StagedChanges<T>(IEntityStore<T> store, Staged<T> staged, IIdentity<T> identity)
     : IStagedChanges where T : notnull
 {
-    public async Task<bool> Unchanged()
+    public async Task<IReadOnlyCollection<Changed>> StaleReads()
     {
+        var stale = new List<Changed>();
         foreach (var read in staged.Read)
             if (await HasChanged(read.Key, read.Value))
-                return false;
-        return true;
+                stale.Add(new Changed(typeof(T), read.Key));
+        return stale;
     }
 
     public IResolvedChanges Resolution() => Resolution(new LatestSaved<T>(staged, identity).Entities());
