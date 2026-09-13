@@ -27,12 +27,18 @@ it, and reach the stores only on commit.
 The flush of a branch. Either every staged change takes effect or none does.
 
 **Stale**:
-The outcome of a commit whose branch read an entity that changed underneath it. Names every read that
-went stale.
+The outcome of a commit whose branch read an entity that changed underneath it, or read an id as absent
+that has since been given one. Names every read that went stale.
 
 **Changed**:
 An entity a branch read that another branch has written since, named by entity type and id. What a
-stale outcome carries.
+stale outcome carries. An id the branch read as absent is named no differently from one it read at a
+version.
+
+**Absent**:
+An id a branch read that held no entity. Remembered as read, so that an entity arriving under it before
+the branch commits goes stale like any other change.
+_Avoid_: Missing, empty, not found (NotFound is what a read answers, not what a branch remembers)
 
 **Aggregate**:
 A query returning many results. Carries its own storage-agnostic implementation.
