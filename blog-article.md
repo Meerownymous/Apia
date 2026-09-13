@@ -45,21 +45,17 @@ public interface IMemory
 or exactly one computed result. `Branch()` opens a unit of work. There is no session object, no
 connection, no backend type in the signature, and nothing here is registered anywhere.
 
-A use case takes the memory and composes everything from it:
+A use case receives `IMemory` as a constructor parameter and composes its storage from it. Writing a
+post is a branch, a save and a commit:
 
 ```csharp
-public sealed class CreatePost(IMemory memory)
-{
-    public async Task<OneOf<Committed, Stale>> Execute(Guid authorId, string content)
-    {
-        var branch = memory.Branch();
-        await branch.Save(new Post(Guid.NewGuid(), authorId, content, LikeCount: 0, DateTime.UtcNow));
-        return await branch.Commit();
-    }
-}
+var branch = memory.Branch();
+await branch.Save(new Post(Guid.NewGuid(), authorId, content, LikeCount: 0, DateTime.UtcNow));
+var outcome = await branch.Commit();
 ```
 
-This runs unchanged in process, on disk and against Postgres.
+Those three lines run unchanged in process, on disk and against Postgres. The outcome is
+`OneOf<Committed, Stale>`, which the branches section takes up.
 
 ---
 
@@ -304,7 +300,7 @@ A scope decides what is visible, writable and deletable for one filter value —
 user, say:
 
 ```csharp
-public sealed class AuthorScope : IScope<Post, Guid>
+public sealed class ConditionedAuthorScope : IScope<Post, Guid>
 {
     public bool Includes(Post entity, Guid authorId)  => entity.AuthorId == authorId;
     public bool CanWrite(Post entity, Guid authorId)  => entity.AuthorId == authorId;
@@ -315,7 +311,7 @@ public sealed class AuthorScope : IScope<Post, Guid>
 }
 
 var scoped = new ScopeMemory<Guid>(
-    memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), signedInUserId);
+    memory, new Overrides(), new Scopes<Guid>().With(new ConditionedAuthorScope()), signedInUserId);
 ```
 
 Every scope states all three rules. There are no default interface implementations in this library, so
@@ -325,12 +321,14 @@ Every scope states all three rules. There are no default interface implementatio
 `NotFound`, indistinguishable from a genuine miss. A query's own implementation reads through the
 vault, so the scope holds inside it. A branch taken from a scoped memory throws
 `UnauthorizedAccessException` when a save or a removal is staged that the scope does not permit, and it
-checks a removal against the entity as the store holds it, because an entity the scope hides is exactly
-the one a removal must not reach.
+reads the entity a removal names without the scope, because an entity the scope hides is exactly the one
+a removal must not reach.
 
 `Condition` is the optional half. Where a scope can state its rule as an expression, the backend pushes
-it into its own query language rather than fetching everything and discarding most of it. Where it
-cannot, the scope returns `None` and filtering happens in process.
+it into its own query language instead of fetching everything and discarding most of it. Where it
+cannot, the scope answers `None` and the filtering happens in process. The test project holds the author
+rule both ways: the class above, and `AuthorScope`, which states the same three rules and answers `None`.
+The contract suite asks each of them.
 
 The honest limit, again: an override reads past all of this.
 
@@ -350,9 +348,8 @@ public async Task PostAppearsInFeed()
     var user = new User(Guid.NewGuid(), "alice");
     var branch = memory.Branch();
     await branch.Save(user);
+    await branch.Save(new Post(Guid.NewGuid(), user.UserId, "Hello, world", LikeCount: 0, DateTime.UtcNow));
     await branch.Commit();
-
-    await new CreatePost(memory).Execute(user.UserId, "Hello, world");
 
     Assert.Single(await memory.Aggregate(new UserFeed(user.UserId, 10)).ToListAsync());
 }
@@ -405,6 +402,7 @@ override for the one query that profiling actually names. The use cases do not c
 that sequence, because none of them ever knew where an entity was kept.
 
 The vocabulary — memory, vault, store, branch, commit, stale, aggregate, projection, override, scope,
-filter — is in [CONTEXT.md](CONTEXT.md). Every example in this article has a counterpart in the test
-project under `tests/Apia.Tests/`, where the contract suite in `Contract/MemoryTests.cs` asks each of
-these promises on every backend.
+filter — is in [CONTEXT.md](CONTEXT.md). The `UserFeed` query and the two author scopes above are the
+ones the test project runs, under `tests/Apia.Tests/`, where the contract suite in
+`Contract/MemoryTests.cs` asks each of these promises on Ram, on File and on Postgres. The Postgres
+override is a sketch: one is written per project, against the statement that project needs.

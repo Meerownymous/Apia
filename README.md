@@ -217,9 +217,11 @@ decides:
 | `Apia.File` | Each entity type's file is written once and replaced by a rename, so an interrupted write cannot empty or half-write a type. Atomicity **across** entity types is not reachable on this medium and is not attempted |
 | `Apia.Postgres` | All or nothing. A commit is one Marten transaction across every type it touches |
 
-Each row is held to its word by a test: the contract suite asserts on every backend that a commit which
-throws part-way leaves nothing of it stored, `FileWriteTests` that a failed write leaves the earlier
-entity where it was, and `PostgresWriteTests` that a commit reaches the session once and saves it once.
+Each row is held to its word by a test. The contract suite asserts on every backend that a commit
+carrying an entity no identity was given for stores none of what it carried, which is the resolve-first
+promise above. `FileWriteTests` asserts that a write that throws leaves the earlier entity where it was.
+`PostgresWriteTests` asserts that a commit tells the session to store what was staged and then saves it,
+which is where the single transaction comes from.
 
 ---
 
@@ -230,7 +232,7 @@ user, say. Every scope states all three rules: "anything you can see, you can ch
 someone made rather than a default nobody read.
 
 ```csharp
-public sealed class AuthorScope : IScope<Post, Guid>
+public sealed class ConditionedAuthorScope : IScope<Post, Guid>
 {
     public bool Includes(Post entity, Guid authorId)  => entity.AuthorId == authorId;
     public bool CanWrite(Post entity, Guid authorId)  => entity.AuthorId == authorId;
@@ -241,18 +243,24 @@ public sealed class AuthorScope : IScope<Post, Guid>
 }
 
 var scoped = new ScopeMemory<Guid>(
-    memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), signedInUserId);
+    memory, new Overrides(), new Scopes<Guid>().With(new ConditionedAuthorScope()), signedInUserId);
 ```
 
 A query's own implementation reads through the vault, so the scope holds inside it. `Condition` lets a
 backend push the rule into its own query language instead of fetching everything and discarding most of
-it. An id outside the scope reads as `NotFound`, indistinguishable from a genuine miss.
+it. Where a rule cannot be stated as an expression, `Condition` answers `None` and the filtering happens
+in process. The test project holds the author rule both ways: the class above, in
+[`ConditionedAuthorScope`](tests/Apia.Tests/Scoping/ConditionedAuthorScope.cs), and
+[`AuthorScope`](tests/Apia.Tests/Scoping/AuthorScope.cs), which states the same three rules and answers
+`None`. The contract suite asks each of them.
+
+An id outside the scope reads as `NotFound`, indistinguishable from a genuine miss.
 
 A branch taken from a scoped memory refuses what the scope does not permit: a save of an entity
 `CanWrite` denies, and a removal of an entity `CanDelete` denies, each throwing
-`UnauthorizedAccessException` at the moment it is staged rather than at the commit. A removal is checked
-against the entity as the store holds it, so an entity the scope hides is exactly the one a removal
-cannot reach.
+`UnauthorizedAccessException` at the moment it is staged rather than at the commit. A removal reads the
+entity it is about to remove without the scope, because an entity the scope hides is exactly the one a
+removal must not reach.
 
 `ScopeMemory` is not a complete boundary: a backend override reads past it. See
 [ADR-0001](docs/adr/0001-backend-overrides-bypass-scopes.md).
@@ -274,20 +282,10 @@ Marten decides for itself which member of an entity carries its id, so a documen
 
 ## Testing
 
-Every use case can be exercised against `RamMemory`: no mocks, no containers, no network. A use case
-takes the memory and hands the commit's outcome on, so its caller answers the stale case too:
+Every use case can be exercised against `RamMemory`: no mocks, no containers, no network. Whatever takes
+the memory in production — a use case, an endpoint, a command — takes `RamMemory` in a test:
 
 ```csharp
-public sealed class CreatePost(IMemory memory)
-{
-    public async Task<OneOf<Committed, Stale>> Execute(Guid authorId, string content)
-    {
-        var branch = memory.Branch();
-        await branch.Save(new Post(Guid.NewGuid(), authorId, content, LikeCount: 0, DateTime.UtcNow));
-        return await branch.Commit();
-    }
-}
-
 [Fact]
 public async Task PostAppearsInFeed()
 {
@@ -297,9 +295,8 @@ public async Task PostAppearsInFeed()
     var user = new User(Guid.NewGuid(), "alice");
     var branch = memory.Branch();
     await branch.Save(user);
+    await branch.Save(new Post(Guid.NewGuid(), user.UserId, "Hello, world", LikeCount: 0, DateTime.UtcNow));
     await branch.Commit();
-
-    await new CreatePost(memory).Execute(user.UserId, "Hello, world");
 
     Assert.Single(await memory.Aggregate(new UserFeed(user.UserId, 10)).ToListAsync());
 }
