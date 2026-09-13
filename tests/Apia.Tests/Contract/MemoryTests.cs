@@ -368,7 +368,6 @@ public sealed class MemoryTests
     public async Task Branch_Memory_CountsOnlyEntitiesInsideTheScope_ThroughAQuery(IBackend backend)
     {
         var memory = backend.Memory();
-        var author = Guid.NewGuid();
         var stranger = Guid.NewGuid();
         var seeding = memory.Branch();
         await seeding.Save(new Post(Guid.NewGuid(), stranger, "someone else's", 0, DateTime.UtcNow));
@@ -377,7 +376,7 @@ public sealed class MemoryTests
 
         Assert.Equal(
             0,
-            await new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), author)
+            await new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), Guid.NewGuid())
                 .Branch()
                 .Memory()
                 .Projection(new PostCount(stranger)));
