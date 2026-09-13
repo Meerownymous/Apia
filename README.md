@@ -25,8 +25,16 @@ public interface IVault<T>
 }
 ```
 
-`Entity` returns `OneOf<T, NotFound>`: no `null`, no `KeyNotFoundException`. `Matching` is the single
-channel through which a backend pushes filtering into its own query language.
+`Entity` returns `OneOf<T, NotFound>`: no `null`, no `KeyNotFoundException`. Both outcomes are unpacked
+by `Match`, so the absent case is answered where the read happens:
+
+```csharp
+var greeting = (await memory.Vault<User>().Entity(id)).Match(
+    user => $"Hello, {user.Username}",
+    _    => "Nobody here by that id");
+```
+
+`Matching` is the single channel through which a backend pushes filtering into its own query language.
 
 ---
 
@@ -75,14 +83,35 @@ public sealed record UserFeed(Guid UserId, int Limit) : IAggregateQuery<UserPost
 {
     public async IAsyncEnumerable<UserPostSummary> Results(IMemory memory)
     {
-        var author = await memory.Vault<User>().Entity(UserId);
-        ...
+        await foreach (var summary in
+            (await memory.Vault<User>().Entity(UserId)).Match(
+                author => Summaries(author, memory),
+                _      => AsyncEnumerable.Empty<UserPostSummary>()))
+            yield return summary;
+    }
+
+    private async IAsyncEnumerable<UserPostSummary> Summaries(User author, IMemory memory)
+    {
+        var posts = await memory.Vault<Post>().All().Where(post => post.AuthorId == UserId).ToListAsync();
+        var comments = await memory.Vault<Comment>().All().ToListAsync();
+        foreach (var post in posts.OrderByDescending(post => post.CreatedAt).Take(Limit))
+            yield return new UserPostSummary(
+                PostId: post.PostId,
+                AuthorName: author.Username,
+                Content: post.Content,
+                LikeCount: post.LikeCount,
+                CommentCount: comments.Count(comment => comment.PostId == post.PostId),
+                CreatedAt: post.CreatedAt);
     }
 }
 
 await foreach (var summary in memory.Aggregate(new UserFeed(userId, 20)))
     Console.WriteLine(summary.Content);
 ```
+
+An unknown author yields no entries, which is what `Match` states at the point of the read. The query
+above is the one the contract suite asks on every backend, in
+[`tests/Apia.Tests/Query/UserFeed.cs`](tests/Apia.Tests/Query/UserFeed.cs).
 
 The same query text runs unchanged on Ram, on File and on Postgres.
 
@@ -167,7 +196,10 @@ you about:
 `Stale` carries a `Changed` per read that went stale, each naming the entity type and the id, so a
 branch that read a user and a post is told about both rather than about the first one noticed.
 
-Nothing is written when a commit reports `Stale`.
+Nothing is written when a commit reports `Stale`: the entity keeps the value the other branch gave it.
+
+A read by id is what a commit compares. Streaming a type through `All` or `Matching` notes nothing, so
+a branch that walked a type commits even when an entity it streamed changed meanwhile.
 
 A commit compares the versions it read against the versions the stores hold and then writes, which
 catches a branch that read before another branch committed. It is not a lock: two commits running at
@@ -185,6 +217,12 @@ decides:
 | `Apia.File` | Each entity type's file is written once and replaced by a rename, so an interrupted write cannot empty or half-write a type. Atomicity **across** entity types is not reachable on this medium and is not attempted |
 | `Apia.Postgres` | All or nothing. A commit is one Marten transaction across every type it touches |
 
+Each row is held to its word by a test. The contract suite asserts on every backend that a commit
+carrying an entity no identity was given for stores none of what it carried, which is the resolve-first
+promise above. `FileWriteTests` asserts that a write that throws leaves the earlier entity where it was.
+`PostgresWriteTests` asserts that a commit tells the session to store what was staged and then saves it,
+which is where the single transaction comes from.
+
 ---
 
 ## Scopes
@@ -194,7 +232,7 @@ user, say. Every scope states all three rules: "anything you can see, you can ch
 someone made rather than a default nobody read.
 
 ```csharp
-public sealed class AuthorScope : IScope<Post, Guid>
+public sealed class ConditionedAuthorScope : IScope<Post, Guid>
 {
     public bool Includes(Post entity, Guid authorId)  => entity.AuthorId == authorId;
     public bool CanWrite(Post entity, Guid authorId)  => entity.AuthorId == authorId;
@@ -205,12 +243,24 @@ public sealed class AuthorScope : IScope<Post, Guid>
 }
 
 var scoped = new ScopeMemory<Guid>(
-    memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), signedInUserId);
+    memory, new Overrides(), new Scopes<Guid>().With(new ConditionedAuthorScope()), signedInUserId);
 ```
 
 A query's own implementation reads through the vault, so the scope holds inside it. `Condition` lets a
 backend push the rule into its own query language instead of fetching everything and discarding most of
-it. An id outside the scope reads as `NotFound`, indistinguishable from a genuine miss.
+it. Where a rule cannot be stated as an expression, `Condition` answers `None` and the filtering happens
+in process. The test project holds the author rule both ways: the class above, in
+[`ConditionedAuthorScope`](tests/Apia.Tests/Scoping/ConditionedAuthorScope.cs), and
+[`AuthorScope`](tests/Apia.Tests/Scoping/AuthorScope.cs), which states the same three rules and answers
+`None`. The contract suite asks each of them.
+
+An id outside the scope reads as `NotFound`, indistinguishable from a genuine miss.
+
+A branch taken from a scoped memory refuses what the scope does not permit: a save of an entity
+`CanWrite` denies, and a removal of an entity `CanDelete` denies, each throwing
+`UnauthorizedAccessException` at the moment it is staged rather than at the commit. A removal reads the
+entity it is about to remove without the scope, because an entity the scope hides is exactly the one a
+removal must not reach.
 
 `ScopeMemory` is not a complete boundary: a backend override reads past it. See
 [ADR-0001](docs/adr/0001-backend-overrides-bypass-scopes.md).
@@ -232,7 +282,8 @@ Marten decides for itself which member of an entity carries its id, so a documen
 
 ## Testing
 
-Every use case can be exercised against `RamMemory`: no mocks, no containers, no network.
+Every use case can be exercised against `RamMemory`: no mocks, no containers, no network. Whatever takes
+the memory in production — a use case, an endpoint, a command — takes `RamMemory` in a test:
 
 ```csharp
 [Fact]
@@ -244,9 +295,8 @@ public async Task PostAppearsInFeed()
     var user = new User(Guid.NewGuid(), "alice");
     var branch = memory.Branch();
     await branch.Save(user);
+    await branch.Save(new Post(Guid.NewGuid(), user.UserId, "Hello, world", LikeCount: 0, DateTime.UtcNow));
     await branch.Commit();
-
-    await new CreatePost(memory).Execute(user.UserId, "Hello, world");
 
     Assert.Single(await memory.Aggregate(new UserFeed(user.UserId, 10)).ToListAsync());
 }
@@ -255,7 +305,13 @@ public async Task PostAppearsInFeed()
 The library's own suite works the same way: one contract suite runs through the memory against every
 backend, so a backend that does not actually write cannot be green. A backend this machine cannot reach
 is reported as skipped by name, so a green local run cannot be mistaken for full coverage. Set
-`APIA_POSTGRES_CONNECTION` to include Postgres.
+`APIA_POSTGRES_CONNECTION` to include Postgres; CI sets it against a Postgres service.
+
+Every promise this readme makes is one the suite keeps. The reads, the queries, the overrides, the
+branch overlay, the stale outcome and what a scope makes visible are asked on Ram, on File and on
+Postgres in [`tests/Apia.Tests/Contract/MemoryTests.cs`](tests/Apia.Tests/Contract/MemoryTests.cs); what
+a scope refuses to write or to remove is held in
+[`tests/Apia.Tests/Scope/ScopeTests.cs`](tests/Apia.Tests/Scope/ScopeTests.cs).
 
 ---
 
