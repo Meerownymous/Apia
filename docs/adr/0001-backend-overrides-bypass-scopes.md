@@ -28,3 +28,6 @@ through; whether it does so is its own business, and a hand-written statement wi
 Supplying an override for a query that reads scope-protected entities is a security decision, not a
 performance decision. `ScopeMemory` must not be documented as if it were a complete boundary, and its
 own documentation says so. Revisiting this is tracked as issue #12.
+
+Issue #12 also reports a second leak, where a registered source was handed the unscoped memory at the
+moment the memory was built. That one is not accepted and is gone with the registry — see ADR-0002.
