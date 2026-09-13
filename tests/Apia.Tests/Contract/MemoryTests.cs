@@ -344,6 +344,46 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
+    public async Task Branch_Memory_StreamsOnlyEntitiesInsideTheScope_ThroughAQuery(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var author = Guid.NewGuid();
+        var seeding = memory.Branch();
+        await seeding.Save(new Post(Guid.NewGuid(), author, "mine, committed", 0, DateTime.UtcNow));
+        await seeding.Save(new Post(Guid.NewGuid(), Guid.NewGuid(), "someone else's", 0, DateTime.UtcNow));
+        await seeding.Commit();
+        var branch =
+            new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), author).Branch();
+        await branch.Save(new Post(Guid.NewGuid(), author, "mine, staged", 0, DateTime.UtcNow));
+
+        Assert.Equal(
+            new[] { "mine, committed", "mine, staged" },
+            (await branch.Memory().Aggregate(new AllPosts()).ToListAsync())
+                .Select(post => post.Content)
+                .Order());
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Branch_Memory_CountsOnlyEntitiesInsideTheScope_ThroughAQuery(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var stranger = Guid.NewGuid();
+        var seeding = memory.Branch();
+        await seeding.Save(new Post(Guid.NewGuid(), stranger, "someone else's", 0, DateTime.UtcNow));
+        await seeding.Save(new Post(Guid.NewGuid(), stranger, "also someone else's", 0, DateTime.UtcNow));
+        await seeding.Commit();
+
+        Assert.Equal(
+            0,
+            await new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), Guid.NewGuid())
+                .Branch()
+                .Memory()
+                .Projection(new PostCount(stranger)));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
     public async Task Projection_Result_CountsNothing_WhenTheEntitiesAreOutsideTheScope(IBackend backend)
     {
         var memory = backend.Memory();
