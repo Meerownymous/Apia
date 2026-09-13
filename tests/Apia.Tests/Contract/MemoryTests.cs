@@ -428,6 +428,28 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
+    public async Task Commit_ReportsStaleNamingTheEntityOnce_WhenAnIdItReadAsAbsentIsFoundOnASecondRead(
+        IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var reading = memory.Branch();
+        await reading.Memory().Vault<User>().Entity(user.UserId);
+        var meddling = memory.Branch();
+        await meddling.Save(user);
+        await meddling.Commit();
+        await reading.Memory().Vault<User>().Entity(user.UserId);
+        await reading.Save(user with { Username = "Bart" });
+
+        Assert.Equal(
+            new[] { new Changed(typeof(User), user.UserId) },
+            (await reading.Commit()).Match(
+                _ => throw new InvalidOperationException("Committed"),
+                stale => stale.Changes));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
     public async Task Commit_ReportsCommitted_WhenAnIdItReadAsAbsentIsStillAbsent(IBackend backend)
     {
         var memory = backend.Memory();

@@ -6,17 +6,17 @@ public sealed class StagedChanges<T>(IEntityStore<T> store, Staged<T> staged, II
 {
     public async Task<IReadOnlyCollection<Changed>> StaleReads()
     {
-        var stale = new List<Changed>();
+        // A branch can hold both memories of one id — read at a version and read as absent, in either
+        // order — and both can answer stale at once. Collecting ids rather than appending to a list of
+        // outcomes is what keeps such an id named once.
+        var stale = new HashSet<Guid>();
         foreach (var read in staged.Read)
             if (await HasChanged(read.Key, read.Value))
-                stale.Add(new Changed(typeof(T), read.Key));
-        // An id read both at a version and as absent was deleted underneath the branch between the two
-        // reads, which the version read already reports: every version is fresh, so the store answers
-        // either nothing or a version the branch never read. Skipping it keeps the id named once.
-        foreach (var absent in staged.Absent.Where(id => !staged.Read.ContainsKey(id)))
+                stale.Add(read.Key);
+        foreach (var absent in staged.Absent)
             if (await HasArrived(absent))
-                stale.Add(new Changed(typeof(T), absent));
-        return stale;
+                stale.Add(absent);
+        return stale.Select(id => new Changed(typeof(T), id)).ToList();
     }
 
     public IResolvedChanges Resolution() => Resolution(new LatestSaved<T>(staged, identity).Entities());

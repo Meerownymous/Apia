@@ -35,6 +35,11 @@ An entity a branch read that another branch has written since, named by entity t
 stale outcome carries. An id the branch read as absent is named no differently from one it read at a
 version.
 
+**Absent**:
+An id a branch read that held no entity. Remembered as read, so that an entity arriving under it before
+the branch commits goes stale like any other change.
+_Avoid_: Missing, empty, not found (NotFound is what a read answers, not what a branch remembers)
+
 **Aggregate**:
 A query returning many results. Carries its own storage-agnostic implementation.
 
