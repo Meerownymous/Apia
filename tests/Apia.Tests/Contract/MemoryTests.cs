@@ -356,7 +356,11 @@ public sealed class MemoryTests
             new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), author).Branch();
         await branch.Save(new Post(Guid.NewGuid(), author, "mine, staged", 0, DateTime.UtcNow));
 
-        Assert.Equal(2, (await branch.Memory().Aggregate(new AllPosts()).ToListAsync()).Count);
+        Assert.Equal(
+            new[] { "mine, committed", "mine, staged" },
+            (await branch.Memory().Aggregate(new AllPosts()).ToListAsync())
+                .Select(post => post.Content)
+                .Order());
     }
 
     [SkippableTheory]
@@ -370,11 +374,13 @@ public sealed class MemoryTests
         await seeding.Save(new Post(Guid.NewGuid(), stranger, "someone else's", 0, DateTime.UtcNow));
         await seeding.Save(new Post(Guid.NewGuid(), stranger, "also someone else's", 0, DateTime.UtcNow));
         await seeding.Commit();
-        var branch =
-            new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), author).Branch();
-        await branch.Save(new Post(Guid.NewGuid(), author, "mine, staged", 0, DateTime.UtcNow));
 
-        Assert.Equal(0, await branch.Memory().Projection(new PostCount(stranger)));
+        Assert.Equal(
+            0,
+            await new ScopeMemory<Guid>(memory, new Overrides(), new Scopes<Guid>().With(new AuthorScope()), author)
+                .Branch()
+                .Memory()
+                .Projection(new PostCount(stranger)));
     }
 
     [SkippableTheory]

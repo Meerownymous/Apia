@@ -8,8 +8,8 @@ namespace Apia.Scope;
 /// <para>
 /// The overrides answering here are the ones handed to this memory, not the ones the wrapped memory was
 /// composed with, which it does not publish. Which overrides read past this scope is therefore a
-/// decision the composition states: the same collection to keep them, <see cref="Overrides"/> to let
-/// every query answer itself inside the scope.
+/// decision the composition states: handing over the same collection keeps them answering inside the
+/// scope, and handing over an empty <see cref="Overrides"/> leaves every query to answer itself.
 /// </para>
 /// </summary>
 public sealed class ScopeMemory<TFilter>(

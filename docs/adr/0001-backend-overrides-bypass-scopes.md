@@ -11,9 +11,12 @@ Such an override reads past `IVault<T>` and therefore past every scope. We accep
 overrides are orthogonal, and the author of an override is responsible for applying the equivalent
 filter themselves.
 
-`ScopeMemory` is given the same overrides the inner memory was composed with, so an override still
-answers a query asked through a scoped memory. It is handed the scoped memory as the one to read
-through; whether it does so is its own business, and a hand-written statement will not.
+`ScopeMemory` holds overrides of its own, because the memory it wraps does not publish the ones it was
+composed with. A composition that hands it the same collection keeps an override answering a query
+asked through a scoped memory; one that hands it an empty collection leaves every query to its own
+implementation inside the scope, which is the narrower reading and a legitimate choice. Either way the
+override is handed the scoped memory as the one to read through; whether it reads through it is its own
+business, and a hand-written statement will not.
 
 ## Considered Options
 
