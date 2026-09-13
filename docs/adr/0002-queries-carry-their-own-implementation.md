@@ -17,6 +17,12 @@ memory when it runs rather than when it is registered. A query therefore reads t
 it was asked through, which is what makes a branch's overlay and a scope reach inside it. Scopes stop at
 overrides (see ADR-0001).
 
+An override is handed the query object it answers, which is how it learns what was asked. A query that
+carries values therefore has to state them as values a holder can read, rather than keep them in fields
+only its own implementation reaches; the example queries in the test project are records for that
+reason. The contract suite asks one query with and without an override on every backend and compares
+the two answers, so an override that cannot see what was asked cannot pass for one that can.
+
 The plain defect reported alongside ADR-0001 in issue #12 goes with the registry rather than being
 accepted: a registered source was handed the unscoped memory at the moment the memory was built, so a
 scope could not reach inside such a source at all and a scope set to one author returned another

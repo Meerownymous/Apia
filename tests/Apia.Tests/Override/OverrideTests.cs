@@ -39,6 +39,22 @@ public sealed class OverrideTests
     }
 
     [Fact]
+    public async Task Aggregate_Results_AnswerWhatTheQueryAskedFor_WhenTheOverrideReadsIt()
+    {
+        var author = new User(Guid.NewGuid(), "Miro");
+        var memory = new RamMemory(new ExampleIdentities(), new Overrides().With(new MatchedUserFeed()));
+        var branch = memory.Branch();
+        await branch.Save(author);
+        await branch.Save(new Post(Guid.NewGuid(), author.UserId, "mine", 0, DateTime.UtcNow));
+        await branch.Save(new Post(Guid.NewGuid(), Guid.NewGuid(), "someone else's", 0, DateTime.UtcNow));
+        await branch.Commit();
+
+        Assert.Equal(
+            "mine",
+            (await memory.Aggregate(new UserFeed(author.UserId, 20)).ToListAsync()).Single().Content);
+    }
+
+    [Fact]
     public async Task Projection_Result_ComesFromTheOverride_WhenOneWasGiven()
     {
         var memory = new RamMemory(new ExampleIdentities(), new Overrides().With(new HandWrittenPostCount(41)));

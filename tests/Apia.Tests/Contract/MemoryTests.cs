@@ -165,6 +165,64 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
+    public async Task Aggregate_Results_AreTheSame_WithAndWithoutAnOverride(IBackend backend)
+    {
+        var author = new User(Guid.NewGuid(), "Miro");
+        var post = new Post(Guid.NewGuid(), author.UserId, "Great unit test discovered", 1, DateTime.UtcNow);
+        var comment = new Comment(Guid.NewGuid(), post.PostId, Guid.NewGuid(), "Mine smells like cat food", DateTime.UtcNow);
+        var plain = backend.Memory();
+        var overridden = backend.Memory(new Overrides().With(new MatchedUserFeed()));
+        foreach (var memory in new[] { plain, overridden })
+        {
+            var branch = memory.Branch();
+            await branch.Save(author);
+            await branch.Save(post);
+            await branch.Save(comment);
+            await branch.Commit();
+        }
+
+        Assert.Equal(
+            (await plain.Aggregate(new UserFeed(author.UserId, 20)).ToListAsync()).Single(),
+            (await overridden.Aggregate(new UserFeed(author.UserId, 20)).ToListAsync()).Single());
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Projection_Result_IsTheSame_WithAndWithoutAnOverride(IBackend backend)
+    {
+        var author = Guid.NewGuid();
+        var plain = backend.Memory();
+        var overridden = backend.Memory(new Overrides().With(new MatchedPostCount()));
+        foreach (var memory in new[] { plain, overridden })
+        {
+            var branch = memory.Branch();
+            await branch.Save(new Post(Guid.NewGuid(), author, "one", 0, DateTime.UtcNow));
+            await branch.Save(new Post(Guid.NewGuid(), author, "two", 0, DateTime.UtcNow));
+            await branch.Save(new Post(Guid.NewGuid(), Guid.NewGuid(), "someone else's", 0, DateTime.UtcNow));
+            await branch.Commit();
+        }
+
+        Assert.Equal(
+            await plain.Projection(new PostCount(author)),
+            await overridden.Projection(new PostCount(author)));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Projection_Result_ComesFromTheQuery_WhenTheOverrideGivenIsForAnotherQuery(IBackend backend)
+    {
+        var author = Guid.NewGuid();
+        var memory = backend.Memory(new Overrides().With(new MatchedUserFeed()));
+        var branch = memory.Branch();
+        await branch.Save(new Post(Guid.NewGuid(), author, "one", 0, DateTime.UtcNow));
+        await branch.Save(new Post(Guid.NewGuid(), author, "two", 0, DateTime.UtcNow));
+        await branch.Commit();
+
+        Assert.Equal(2, await memory.Projection(new PostCount(author)));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
     public async Task Branch_Memory_ReadsItsOwnStagedSave(IBackend backend)
     {
         var memory = backend.Memory();

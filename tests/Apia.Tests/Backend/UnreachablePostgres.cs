@@ -8,5 +8,8 @@ namespace Apia.Tests.Backend;
 /// </summary>
 public sealed class UnreachablePostgres(string reason) : IBackend
 {
-    public IMemory Memory() => throw new SkipException($"Postgres was not exercised: {reason}");
+    public IMemory Memory() => Memory(new Overrides());
+
+    public IMemory Memory(IOverrides overrides)
+        => throw new SkipException($"Postgres was not exercised: {reason}");
 }

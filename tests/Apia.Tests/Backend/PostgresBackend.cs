@@ -13,7 +13,9 @@ namespace Apia.Tests.Backend;
 /// </summary>
 public sealed class PostgresBackend(string connection) : IBackend
 {
-    public IMemory Memory()
+    public IMemory Memory() => Memory(new Overrides());
+
+    public IMemory Memory(IOverrides overrides)
         => new PostgresMemory(
             DocumentStore.For(options =>
             {
@@ -27,5 +29,5 @@ public sealed class PostgresBackend(string connection) : IBackend
                 options.Schema.For<Note>().Identity(note => note.NoteId);
             }),
             new ExampleIdentities(),
-            new Overrides());
+            overrides);
 }
