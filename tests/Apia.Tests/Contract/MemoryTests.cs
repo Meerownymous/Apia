@@ -389,6 +389,48 @@ public sealed class MemoryTests
 
     [SkippableTheory]
     [ClassData(typeof(Backends))]
+    public async Task Commit_ReportsCommitted_WhenOnlyAStreamedEntityChangedSince(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var seeding = memory.Branch();
+        await seeding.Save(user);
+        await seeding.Commit();
+        var streaming = memory.Branch();
+        await streaming.Memory().Vault<User>().All().ToListAsync();
+        var meddling = memory.Branch();
+        await meddling.Save(user with { Username = "Ralph" });
+        await meddling.Commit();
+        await streaming.Save(new Post(Guid.NewGuid(), user.UserId, "a thought", 0, DateTime.UtcNow));
+
+        Assert.True((await streaming.Commit()).Match(_ => true, _ => false));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
+    public async Task Vault_Entity_ReturnsWhatTheOtherBranchWrote_WhenTheCommitWentStale(IBackend backend)
+    {
+        var memory = backend.Memory();
+        var user = new User(Guid.NewGuid(), "Miro");
+        var seeding = memory.Branch();
+        await seeding.Save(user);
+        await seeding.Commit();
+        var reading = memory.Branch();
+        await reading.Memory().Vault<User>().Entity(user.UserId);
+        var meddling = memory.Branch();
+        await meddling.Save(user with { Username = "Ralph" });
+        await meddling.Commit();
+        await reading.Save(user with { Username = "Bart" });
+        await reading.Commit();
+
+        Assert.Equal(
+            "Ralph",
+            (await memory.Vault<User>().Entity(user.UserId))
+                .Match(found => found.Username, _ => throw new InvalidOperationException("NotFound")));
+    }
+
+    [SkippableTheory]
+    [ClassData(typeof(Backends))]
     public async Task Vault_Entity_ReturnsNotFound_WhenOutsideTheScope(IBackend backend)
     {
         var memory = backend.Memory();
