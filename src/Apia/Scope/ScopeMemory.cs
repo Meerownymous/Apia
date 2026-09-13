@@ -5,6 +5,12 @@ namespace Apia.Scope;
 /// own implementation runs against this memory, so the scope holds inside it. A backend override does
 /// not read through the vault and therefore reads past the scope — see
 /// docs/adr/0001-backend-overrides-bypass-scopes.md. This is not a complete boundary.
+/// <para>
+/// The overrides answering here are the ones handed to this memory, not the ones the wrapped memory was
+/// composed with, which it does not publish. Which overrides read past this scope is therefore a
+/// decision the composition states: the same collection to keep them, <see cref="Overrides"/> to let
+/// every query answer itself inside the scope.
+/// </para>
 /// </summary>
 public sealed class ScopeMemory<TFilter>(
     IMemory inner,

@@ -1,7 +1,9 @@
 using Apia.Ram;
+using Apia.Scope;
 using Apia.Tests.Entities;
 using Apia.Tests.Identity;
 using Apia.Tests.Query;
+using Apia.Tests.Scoping;
 using Xunit;
 
 namespace Apia.Tests.Override;
@@ -43,4 +45,26 @@ public sealed class OverrideTests
 
         Assert.Equal(41, await memory.Projection(new PostCount(Guid.NewGuid())));
     }
+
+    [Fact]
+    public async Task Projection_Result_ComesFromTheOverride_WhenTheScopedMemoryWasGivenOne()
+        => Assert.Equal(
+            41,
+            await new ScopeMemory<Guid>(
+                    new RamMemory(new ExampleIdentities(), new Overrides()),
+                    new Overrides().With(new HandWrittenPostCount(41)),
+                    new Scopes<Guid>().With(new AuthorScope()),
+                    Guid.NewGuid())
+                .Projection(new PostCount(Guid.NewGuid())));
+
+    [Fact]
+    public async Task Projection_Result_ComesFromTheQuery_WhenTheScopedMemoryWasGivenNoOverride()
+        => Assert.Equal(
+            0,
+            await new ScopeMemory<Guid>(
+                    new RamMemory(new ExampleIdentities(), new Overrides().With(new HandWrittenPostCount(41))),
+                    new Overrides(),
+                    new Scopes<Guid>().With(new AuthorScope()),
+                    Guid.NewGuid())
+                .Projection(new PostCount(Guid.NewGuid())));
 }
